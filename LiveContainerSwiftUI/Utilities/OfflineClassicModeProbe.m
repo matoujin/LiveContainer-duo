@@ -10,12 +10,62 @@
 #import <sys/sysctl.h>
 #import <stdlib.h>
 #import "LCUtils.h"
-#import "LCInfoPlistModernizer.h"
 
 void bypass_os_variant_has_internal_content(void (^block)(void));
 
 /// iOS 27.1 SDK version packed as major.minor.patch → 0x001B0100.
 static const uint32_t kLCiOS27_1SDKVersion = 0x001B0100;
+
+NSArray<NSString *> *LCLegacyLaunchInfoKeys(void) {
+    return @[
+        @"UILaunchImages",
+        @"UILaunchImageFile",
+        @"UILaunchStoryboardName",
+        @"UILaunchStoryboards",
+        @"UIRequiresFullScreen",
+    ];
+}
+
+BOOL LCInfoPlistNeedsModernLaunchScreen(NSDictionary *infoPlist) {
+    if (![infoPlist isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    for (NSString *key in LCLegacyLaunchInfoKeys()) {
+        if (infoPlist[key] != nil) {
+            return YES;
+        }
+    }
+    id launchScreen = infoPlist[@"UILaunchScreen"];
+    if (![launchScreen isKindOfClass:NSDictionary.class]) {
+        return YES;
+    }
+    return NO;
+}
+
+BOOL LCModernizeInfoPlistForDuo(NSMutableDictionary *infoPlist) {
+    if (![infoPlist isKindOfClass:NSMutableDictionary.class]) {
+        return NO;
+    }
+    BOOL changed = NO;
+    for (NSString *key in LCLegacyLaunchInfoKeys()) {
+        if (infoPlist[key] != nil) {
+            [infoPlist removeObjectForKey:key];
+            changed = YES;
+        }
+    }
+    id launchScreen = infoPlist[@"UILaunchScreen"];
+    if (![launchScreen isKindOfClass:NSDictionary.class]) {
+        infoPlist[@"UILaunchScreen"] = @{};
+        changed = YES;
+    }
+    return changed;
+}
+
+NSDictionary *LCModernizedInfoPlistSnapshot(NSDictionary *infoPlist) {
+    NSMutableDictionary *mutable = infoPlist.mutableCopy ?: [NSMutableDictionary new];
+    LCModernizeInfoPlistForDuo(mutable);
+    return mutable.copy;
+}
 
 static BOOL LCDeviceLooksLikePhoneDuo(void) {
     static dispatch_once_t onceToken;

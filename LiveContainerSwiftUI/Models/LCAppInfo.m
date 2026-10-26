@@ -5,7 +5,6 @@
 #import <UIKit/UIKit.h>
 #import "LCAppInfo.h"
 #import "LCUtils.h"
-#import "LCInfoPlistModernizer.h"
 #import "../../LiveContainer/LCSharedUtils.h"
 
 

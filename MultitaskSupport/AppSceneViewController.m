@@ -145,7 +145,11 @@
             UIEdgeInsets insets = self.view.safeAreaInsets;
             settings.safeAreaInsetsPortrait = insets;
             if (@available(iOS 19.0, *)) {
-                settings.safeAreaEdgeInsets = insets;
+                if ([settings respondsToSelector:@selector(setSafeAreaEdgeInsets:)]) {
+                    settings.safeAreaEdgeInsets = insets;
+                } else {
+                    [settings setValue:[NSValue valueWithUIEdgeInsets:insets] forKey:@"safeAreaEdgeInsets"];
+                }
             }
         }
     };
@@ -290,7 +294,11 @@
             if(!self.usesHostingControllerAPI) {
                 settings.safeAreaInsetsPortrait = hostInsets;
                 if (@available(iOS 19.0, *)) {
-                    settings.safeAreaEdgeInsets = hostInsets;
+                    if ([settings respondsToSelector:@selector(setSafeAreaEdgeInsets:)]) {
+                        settings.safeAreaEdgeInsets = hostInsets;
+                    } else {
+                        [settings setValue:[NSValue valueWithUIEdgeInsets:hostInsets] forKey:@"safeAreaEdgeInsets"];
+                    }
                 }
             }
             CGRect frame = self.view.frame;

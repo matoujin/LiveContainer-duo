@@ -71,6 +71,9 @@ jobs:
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
         run: |
+          # Keep going after xcodebuild fails so we can dump real compiler errors
+          # (Actions defaults to `bash -e`, which would exit at the pipe otherwise).
+          set +e
           set -o pipefail
           xcodebuild archive \
             -archivePath "$archive_path" \
@@ -85,6 +88,8 @@ jobs:
           if [ "$status" -ne 0 ]; then
             echo '==== xcodebuild errors ===='
             grep -E 'error:|fatal error:|undefined' /tmp/xcodebuild.log | tail -80 || true
+            echo '==== last 40 log lines ===='
+            tail -40 /tmp/xcodebuild.log || true
           fi
           exit $status
       - name: Tar Build Artifact
