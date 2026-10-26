@@ -44,21 +44,21 @@
       "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/kazumi.png",
       "tintColor": "#E85D4C",
       "beta": true,
-      "version": "2.4.2",
-      "versionDate": "2026-10-26",
-      "versionDescription": "duo-latest：Kazumi Duo iPhone Duo / iOS 27.1 免签包。",
-      "downloadURL": "https://ghfast.top/https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2_ios27.1.ipa",
-      "size": 29501333,
+      "version": "2.4.2-duo2",
+      "versionDate": "2026-10-27",
+      "versionDescription": "2.4.2-duo2：宽屏/内页 NavigationRail 移至右侧（Duo）；窄窗仍保留底部 Tab。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2-duo2_ios27.1.ipa",
+      "size": 29500703,
       "versions": [
         {
-          "version": "2.4.2",
-          "buildVersion": "20402",
-          "date": "2026-10-26",
-          "localizedDescription": "duo-latest：Kazumi Duo iPhone Duo / iOS 27.1 免签包。",
-          "downloadURL": "https://ghfast.top/https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2_ios27.1.ipa",
-          "size": 29501333,
+          "version": "2.4.2-duo2",
+          "buildVersion": "20403",
+          "date": "2026-10-27",
+          "localizedDescription": "2.4.2-duo2：宽屏/内页 NavigationRail 移至右侧（Duo）；窄窗仍保留底部 Tab。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2-duo2_ios27.1.ipa",
+          "size": 29500703,
           "minOSVersion": "16.1",
-          "sha256": "35ba13bc864bd4708b3999340bc385a3bf97eb3ad9dd66ace300ea96dab514e8"
+          "sha256": "d7ee8078f258a3722ad5ade92ce972521eada8701f73d6678419f59042d7f131"
         }
       ]
     },
@@ -91,6 +91,15 @@
     }
   ],
   "news": [
+    {
+      "title": "Kazumi 2.4.2-duo2：右侧导航栏",
+      "identifier": "kazumi-2.4.2-duo2-2026-10-27",
+      "caption": "宽屏/内页 NavigationRail 移到右侧；窄窗仍用底部 Tab。源已指向新 IPA。",
+      "date": "2026-10-27",
+      "tintColor": "#E85D4C",
+      "url": "https://github.com/matoujin/Kazumi-duo/releases/tag/duo-latest",
+      "notify": true
+    },
     {
       "title": "Venera 1.6.3-duo2：右侧导航栏",
       "identifier": "venera-1.6.3-duo2-2026-10-27",
