@@ -120,8 +120,20 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         _installOptions = State(initialValue: [])
     }
     
+    /// Outer cover ≈466pt compact single column; inner display ≥600pt → multi-column grid.
+    private func duoAppColumns(for width: CGFloat) -> [GridItem] {
+        if width >= 900 {
+            return [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+        }
+        if width >= 600 {
+            return [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+        }
+        return [GridItem(.flexible())]
+    }
+    
     var body: some View {
         NavigationView {
+            GeometryReader { geo in
             ScrollView {
                 NavigationLink(
                     destination: navigateTo,
@@ -131,34 +143,38 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 })
                 .hidden()
                 
-                LazyVStack {
+                LazyVGrid(columns: duoAppColumns(for: geo.size.width), spacing: 12) {
                     ForEach(filteredApps, id: \.self) { app in
                         LCAppBanner(appModel: app, delegate: self)
                     }
                     .transition(.scale)
                 }
                 .padding()
+                // Respect Duo vertical status-bar / Dynamic Island safe areas on both covers.
+                .padding(.leading, max(0, geo.safeAreaInsets.leading - 8))
+                .padding(.trailing, max(0, geo.safeAreaInsets.trailing - 8))
                 .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
+                .animation(.easeInOut, value: geo.size.width)
 
                 VStack {
                     if LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding") {
                         if sharedModel.isHiddenAppUnlocked {
-                            LazyVStack {
-                                HStack {
-                                    Text("lc.appList.hiddenApps".loc)
-                                        .font(.system(.title2).bold())
-                                    Spacer()
-                                }
-                                
+                            LazyVGrid(columns: duoAppColumns(for: geo.size.width), spacing: 12) {
                                 ForEach(filteredHiddenApps, id: \.self) { app in
                                     LCAppBanner(appModel: app, delegate: self)
                                 }
                                 .transition(.scale)
-                                
                             }
                             .padding()
                             .transition(.opacity)
                             .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredHiddenApps)
+                            
+                            HStack {
+                                Text("lc.appList.hiddenApps".loc)
+                                    .font(.system(.title2).bold())
+                                Spacer()
+                            }
+                            .padding(.horizontal)
                             
                             if sharedModel.hiddenApps.count == 0 {
                                 Text("lc.appList.hideAppTip".loc)
@@ -166,22 +182,24 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             }
                         }
                     } else if sharedModel.hiddenApps.count > 0 {
-                        LazyVStack {
+                        VStack(alignment: .leading, spacing: 12) {
                             HStack {
                                 Text("lc.appList.hiddenApps".loc)
                                     .font(.system(.title2).bold())
                                 Spacer()
                             }
-                            ForEach(filteredHiddenApps, id: \.self) { app in
-                                if sharedModel.isHiddenAppUnlocked {
-                                    LCAppBanner(appModel: app, delegate: self)
-                                } else {
-                                    LCAppSkeletonBanner()
+                            LazyVGrid(columns: duoAppColumns(for: geo.size.width), spacing: 12) {
+                                ForEach(filteredHiddenApps, id: \.self) { app in
+                                    if sharedModel.isHiddenAppUnlocked {
+                                        LCAppBanner(appModel: app, delegate: self)
+                                    } else {
+                                        LCAppSkeletonBanner()
+                                    }
                                 }
-                            }
-                            .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
-                            .onTapGesture {
-                                Task { await authenticateUser() }
+                                .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
+                                .onTapGesture {
+                                    Task { await authenticateUser() }
+                                }
                             }
                         }
                         .padding()
@@ -203,6 +221,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 }
 
             }
+            } // GeometryReader
             .navigationBarProgressBar(show:$installprogressVisible, progress: $installProgressPercentage)
             .coordinateSpace(name: "scroll")
             .onAppear {
@@ -747,7 +766,9 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             finalNewApp.autoSaveDisabled = false
             finalNewApp.save()
         } else {
-            // enable SDK version spoof by defalut
+            // Spoof SDK so UIKit sees at least iOS 27.1 (clamped in LCAppInfo / Dyld).
+            // Without this, guests linked to older SDKs fail dyld_program_sdk_at_least(27.1)
+            // and lose Duo fullscreen / verticalBarEdge safe-area traits.
             finalNewApp.spoofSDKVersion = true
         }
         finalNewApp.installationDate = Date.now

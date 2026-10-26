@@ -30,6 +30,14 @@ Crowdin Project: [![Crowdin](https://badges.crowdin.net/livecontainer/localized.
 
 If you encounter any issue please [read our FAQ here](https://livecontainer.github.io/docs/faq)
 
+### iPhone Duo / iOS 27.1 (`duo-latest`)
+This fork publishes Duo-optimized unsigned IPAs under the fixed prerelease tag `duo-latest` (Xcode 27.1 / `iphoneos27.1`, modern `UILaunchScreen`, SDK floor `0x001B0100`):
+
+| Build | Direct install |
+|:--|:--|
+| LiveContainer + SideStore | https://github.com/matoujin/LiveContainer-duo/releases/download/duo-latest/LiveContainer+SideStore_duo_ios27.1.ipa |
+| LiveContainer only | https://github.com/matoujin/LiveContainer-duo/releases/download/duo-latest/LiveContainer_duo_ios27.1.ipa |
+
 ### Standalone 
 <table>
 <tr>

@@ -41,8 +41,20 @@ int (*orig_fcntl)(int fildes, int cmd, void *param) = 0;
 
 uint32_t guestAppSdkVersion = 0;
 uint32_t guestAppSdkVersionSet = 0;
+/// Floor spoofed guest SDK at iOS 27.1 so UIKit enables Duo fullscreen / verticalBarEdge.
+static const uint32_t kLCiOS27_1SDKVersion = 0x001B0100;
 bool (*orig_dyld_program_sdk_at_least)(void* dyldPtr, dyld_build_version_t version);
 uint32_t (*orig_dyld_get_program_sdk_version)(void* dyldPtr);
+
+static uint32_t LCClampGuestSDKVersion(uint32_t sdkVersion) {
+    // Never report an SDK older than iOS 27.1 to UIKit while running inside LiveContainer.
+    // Reporting e.g. 18.5 causes dyld_program_sdk_at_least(27.1) to fail and disables
+    // Duo dynamic layout / UIVerticalBarEdge safe-area traits for the guest.
+    if (sdkVersion != 0 && sdkVersion < kLCiOS27_1SDKVersion) {
+        return kLCiOS27_1SDKVersion;
+    }
+    return sdkVersion;
+}
 
 mach_port_t excPort;
 void *exception_handler(void *unused);
@@ -381,7 +393,8 @@ void DyldHooksInit(bool hideLiveContainer, bool hookDlopen, uint32_t spoofSDKVer
     appExecutableFileTypeOverwritten = !hideLiveContainer;
     
     if(spoofSDKVersion) {
-        guestAppSdkVersion = spoofSDKVersion;
+        guestAppSdkVersion = LCClampGuestSDKVersion(spoofSDKVersion);
+        NSLog(@"[LC] spoofSDKVersion clamped %08x -> %08x", spoofSDKVersion, guestAppSdkVersion);
         if(!initGuestSDKVersionInfo() ||
            !performHookDyldApi("dyld_program_sdk_at_least", 1, (void**)&orig_dyld_program_sdk_at_least, hook_dyld_program_sdk_at_least) ||
            !performHookDyldApi("dyld_get_program_sdk_version", 0, (void**)&orig_dyld_get_program_sdk_version, hook_dyld_get_program_sdk_version)) {

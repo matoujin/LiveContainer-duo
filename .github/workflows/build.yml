@@ -9,27 +9,39 @@ on:
         description: Create a nightly release
         type: boolean
         required: false
+      release__duo_latest:
+        description: Force publish duo-latest prerelease
+        type: boolean
+        required: false
 
 jobs:
   build:
     name: Build using xcodebuild command
-    runs-on: macos-latest
+    # Xcode 27 image ships iOS 27.1 SDK (iphoneos27.1) required for Duo fullscreen.
+    runs-on: xcode-27
     env:
       scheme: LiveContainer
       archive_path: archive
     outputs:
       scheme: ${{ steps.scheme.outputs.scheme }}
       archive_path: ${{ env.archive_path }}
-      artifact: ${{ env.scheme }}.ipa
-      artifact2: ${{ env.scheme }}+SideStore.ipa
+      artifact: LiveContainer_duo_ios27.1.ipa
+      artifact2: LiveContainer+SideStore_duo_ios27.1.ipa
+      artifact_legacy: ${{ env.scheme }}.ipa
+      artifact2_legacy: ${{ env.scheme }}+SideStore.ipa
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.2'
+          xcode-version: '27.1'
       - name: Checkout
         uses: actions/checkout@v6
         with:
           submodules: recursive
+      - name: Show SDK
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          xcrun --sdk iphoneos --show-sdk-build-version
       - name: Set Scheme
         id: scheme
         run: |
@@ -58,7 +70,16 @@ jobs:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild archive -archivePath "$archive_path" -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release | xcpretty && exit ${PIPESTATUS[0]}
+        run: |
+          xcodebuild archive \
+            -archivePath "$archive_path" \
+            -scheme "$scheme" \
+            -"$filetype_parameter" "$file_to_build" \
+            -sdk iphoneos \
+            -arch arm64 \
+            -configuration Release \
+            IPHONEOS_DEPLOYMENT_TARGET=16.1 \
+            | xcpretty && exit ${PIPESTATUS[0]}
       - name: Tar Build Artifact
         run: tar -cvf "$archive_path.xcarchive.tar" "$archive_path.xcarchive"
       - name: Upload a Build Artifact
@@ -68,19 +89,18 @@ jobs:
           path: ${{ env.archive_path }}.xcarchive.tar
       - name: Create IPA
         run: |
+          chmod +x .github/build_github.sh .github/patch_duo_sdk.py
           sh .github/build_github.sh
 
-      - name: Upload a Build Artifact
+      - name: Upload Duo IPAs
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.scheme }}.ipa
-          path: ${{ env.scheme }}.ipa
-      
-      - name: Upload LiveContainer+SideStore
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ env.scheme }}+SideStore.ipa
-          path: ${{ env.scheme }}+SideStore.ipa
+          name: duo-ipas
+          path: |
+            LiveContainer_duo_ios27.1.ipa
+            LiveContainer+SideStore_duo_ios27.1.ipa
+            ${{ env.scheme }}.ipa
+            ${{ env.scheme }}+SideStore.ipa
 
   release__nightly:
     name: Nightly Release
@@ -96,14 +116,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Download a Build Artifact
+      - name: Download Duo IPAs
         uses: actions/download-artifact@v8
         with:
-          name: ${{ needs.build.outputs.artifact }}
-      - name: Download a Build Artifact2
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ needs.build.outputs.artifact2 }}
+          name: duo-ipas
       - name: Get Commit Info
         id: commit_info
         run: |
@@ -131,8 +147,8 @@ jobs:
             
             This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
           files: |
-            ${{ needs.build.outputs.artifact }}
-            ${{ needs.build.outputs.artifact2 }}
+            LiveContainer.ipa
+            LiveContainer+SideStore.ipa
             .github/apps_nightly.json
       - name: Update apps.json in Release 1.0
         uses: softprops/action-gh-release@v3
@@ -140,5 +156,53 @@ jobs:
           tag_name: "1.0"
           files: |
             .github/apps_ss_lc.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release__duo_latest:
+    name: Publish duo-latest
+    permissions:
+      contents: write
+    # Publish on main pushes, manual dispatch, and any PR merge into default branch workflow.
+    if: |
+      inputs.release__duo_latest ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/cursor/'))
+    runs-on: ubuntu-latest
+    needs: [build]
+    concurrency:
+      group: release__duo_latest
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download Duo IPAs
+        uses: actions/download-artifact@v8
+        with:
+          name: duo-ipas
+      - name: Verify artifacts
+        run: |
+          ls -lh LiveContainer_duo_ios27.1.ipa LiveContainer+SideStore_duo_ios27.1.ipa
+      - name: Publish / overwrite duo-latest prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: duo-latest
+          name: duo-latest (iPhone Duo / iOS 27.1)
+          prerelease: true
+          make_latest: false
+          body: |
+            Fixed direct-install links for iPhone Duo (`iPhone19,4`) / iOS 27.1:
+
+            - https://github.com/${{ github.repository }}/releases/download/duo-latest/LiveContainer+SideStore_duo_ios27.1.ipa
+            - https://github.com/${{ github.repository }}/releases/download/duo-latest/LiveContainer_duo_ios27.1.ipa
+
+            **Commit:** ${{ github.sha }}
+            **Workflow:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Built with Xcode 27.1 / `iphoneos27.1` SDK. Host + SideStoreApp.framework + PlugIns stamped with `MinimumOSVersion=16.1`, `LC_BUILD_VERSION` `minos=16.1` / `sdk=27.1`, and modern `UILaunchScreen`.
+          files: |
+            LiveContainer_duo_ios27.1.ipa
+            LiveContainer+SideStore_duo_ios27.1.ipa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

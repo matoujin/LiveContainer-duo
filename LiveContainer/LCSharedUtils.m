@@ -3,6 +3,8 @@
 #import "UIKitPrivate.h"
 #import "utils.h"
 @import MachO;
+#include <sys/sysctl.h>
+#include <stdlib.h>
 
 extern NSUserDefaults *lcUserDefaults;
 extern NSString *lcAppUrlScheme;
@@ -10,6 +12,23 @@ extern NSBundle *lcMainBundle;
 
 NSString* FBSOpenApplicationOptionKeyActivateAsClassic = @"__ActivateAsClassic";
 NSString* FBSOpenApplicationOptionKeyPayloadURL = @"__PayloadURL";
+
+static BOOL LCSharedUtilsIsPhoneDuo(void) {
+    static dispatch_once_t onceToken;
+    static BOOL isDuo = NO;
+    dispatch_once(&onceToken, ^{
+        size_t size = 0;
+        sysctlbyname("hw.machine", NULL, &size, NULL, 0);
+        if (size > 0) {
+            char *buf = calloc(1, size);
+            if (buf && sysctlbyname("hw.machine", buf, &size, NULL, 0) == 0) {
+                isDuo = strcmp(buf, "iPhone19,4") == 0;
+            }
+            free(buf);
+        }
+    });
+    return isDuo;
+}
 
 @implementation LCSharedUtils
 
@@ -151,6 +170,11 @@ NSString* FBSOpenApplicationOptionKeyPayloadURL = @"__PayloadURL";
 
     int tries = 2;
     _LSOpenConfiguration *configuration = [[PrivClass(_LSOpenConfiguration) alloc] init];
+    // iPhone Duo: never ask SpringBoard to ActivateAsClassic — that locks the host
+    // into a 375×667 right-half compat window across Fold↔Unfold.
+    if (LCSharedUtilsIsPhoneDuo()) {
+        classicMode = 0;
+    }
     if(classicMode) {
         NSMutableDictionary* dict = [NSMutableDictionary new];
         dict[FBSOpenApplicationOptionKeyActivateAsClassic] = @(classicMode);

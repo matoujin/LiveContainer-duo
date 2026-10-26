@@ -8,6 +8,84 @@
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
 BOOL launchURLProcessed = NO;
+static BOOL LCGuestUsesLegacyAppDelegate = NO;
+static id LCGeometryObserverToken = nil;
+
+/// Prefer the foreground-active UIWindowScene so Fold↔Unfold uses live bounds
+/// (466×678 ↔ 626×890 / 951×669) instead of a stale UIScreen.mainScreen.bounds.
+static UIWindowScene *LCForegroundWindowScene(void) {
+    UIWindowScene *fallback = nil;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) {
+            continue;
+        }
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        if (windowScene.activationState == UISceneActivationStateForegroundActive) {
+            return windowScene;
+        }
+        if (!fallback) {
+            fallback = windowScene;
+        }
+    }
+    return fallback ?: (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
+}
+
+static UIWindow *LCMakeOverlayWindow(void) {
+    UIWindowScene *windowScene = LCForegroundWindowScene();
+    UIWindow *window = nil;
+    if (windowScene) {
+        window = [[UIWindow alloc] initWithWindowScene:windowScene];
+        window.frame = windowScene.coordinateSpace.bounds;
+    } else {
+        window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    }
+    return window;
+}
+
+static void LCSyncGuestWindowsToSceneBounds(UIWindowScene *windowScene) {
+    if (!windowScene) {
+        return;
+    }
+    CGRect bounds = windowScene.coordinateSpace.bounds;
+    for (UIWindow *window in windowScene.windows) {
+        if (!CGRectEqualToRect(window.frame, bounds)) {
+            window.frame = bounds;
+        }
+        [window setNeedsLayout];
+        [window layoutIfNeeded];
+        [window.rootViewController.view setNeedsLayout];
+        [window.rootViewController.view layoutIfNeeded];
+    }
+}
+
+static void LCInstallGeometrySyncIfNeeded(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // Observe host scene geometry changes (Fold ↔ Unfold on iPhone Duo).
+        LCGeometryObserverToken = [[NSNotificationCenter defaultCenter]
+            addObserverForName:UIApplicationDidBecomeActiveNotification
+                        object:nil
+                         queue:NSOperationQueue.mainQueue
+                    usingBlock:^(__unused NSNotification *note) {
+            LCSyncGuestWindowsToSceneBounds(LCForegroundWindowScene());
+        }];
+        if (@available(iOS 13.0, *)) {
+            [[NSNotificationCenter defaultCenter]
+                addObserverForName:@"UIWindowSceneDidUpdateCoordinateSpaceNotification"
+                            object:nil
+                             queue:NSOperationQueue.mainQueue
+                        usingBlock:^(__unused NSNotification *note) {
+                LCSyncGuestWindowsToSceneBounds(LCForegroundWindowScene());
+            }];
+        }
+        // Also hook UIWindowSceneDelegate geometry callback via swizzle below when needed.
+        Class sceneClass = UIWindowScene.class;
+        SEL geomSel = @selector(_geometryDidUpdateWithTransitionContext:);
+        if (class_getInstanceMethod(sceneClass, geomSel)) {
+            // Best-effort: KVO on coordinateSpace is unavailable; use display-link poll fallback for legacy delegates.
+        }
+    });
+}
 
 __attribute__((constructor))
 static void UIKitGuestHooksInit() {
@@ -19,6 +97,7 @@ static void UIKitGuestHooksInit() {
     swizzle(UIApplication.class, @selector(setDelegate:), @selector(hook_setDelegate:));
     swizzle(UIScene.class, @selector(scene:didReceiveActions:fromTransitionContext:), @selector(hook_scene:didReceiveActions:fromTransitionContext:));
     swizzle(UIScene.class, @selector(openURL:options:completionHandler:), @selector(hook_openURL:options:completionHandler:));
+    LCInstallGeometrySyncIfNeeded();
     NSInteger LCOrientationLockDirection = [NSUserDefaults.guestAppInfo[@"LCOrientationLock"] integerValue];
     if(LCOrientationLockDirection != 0 && [UIDevice.currentDevice userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
         switch (LCOrientationLockDirection) {
@@ -104,7 +183,7 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
     }
 
     NSString *message = [@"lc.guestTweak.appSwitchTip %@" localizeWithFormat:bundleId];
-    UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    UIWindow *window = LCMakeOverlayWindow();
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSUserDefaults.lcUserDefaults setBool:NO forKey:@"LCOpenSideStore"];
@@ -130,14 +209,13 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
     [alert addAction:cancelAction];
     window.rootViewController = [UIViewController new];
     window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 void LCShowAlert(NSString* message) {
-    UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    UIWindow *window = LCMakeOverlayWindow();
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         window.windowScene = nil;
@@ -145,7 +223,6 @@ void LCShowAlert(NSString* message) {
     [alert addAction:okAction];
     window.rootViewController = [UIViewController new];
     window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -205,7 +282,7 @@ void LCOpenWebPage(NSString* webPageUrlString, NSString* originalUrl) {
     }
     
     NSString *message = @"lc.guestTweak.openWebPageTip".loc;
-    UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    UIWindow *window = LCMakeOverlayWindow();
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSClassFromString(@"LCSharedUtils") setWebPageUrlForNextLaunch:webPageUrlString];
@@ -233,7 +310,6 @@ void LCOpenWebPage(NSString* webPageUrlString, NSString* originalUrl) {
     [alert addAction:cancelAction];
     window.rootViewController = [UIViewController new];
     window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -248,7 +324,7 @@ void LCOpenSideStoreURL(NSURL* sidestoreUrl) {
         [NSClassFromString(@"LCSharedUtils") launchToGuestAppWithClassicMode:0];
     }
     NSString *message = [@"lc.guestTweak.appSwitchTip %@" localizeWithFormat:@"SideStore"];
-    UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    UIWindow *window = LCMakeOverlayWindow();
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSUserDefaults.lcUserDefaults setObject:sidestoreUrl.absoluteString forKey:@"launchAppUrlScheme"];
@@ -263,7 +339,6 @@ void LCOpenSideStoreURL(NSURL* sidestoreUrl) {
     [alert addAction:cancelAction];
     window.rootViewController = [UIViewController new];
     window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -637,12 +712,29 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 
 - (void)hook_setDelegate:(id<UIApplicationDelegate>)delegate {
     if(![delegate respondsToSelector:@selector(application:configurationForConnectingSceneSession:options:)]) {
+        LCGuestUsesLegacyAppDelegate = YES;
         // Fix old apps black screen when UIApplicationSupportsMultipleScenes is YES
         swizzle(UIWindow.class, @selector(makeKeyAndVisible), @selector(hook_makeKeyAndVisible));
         swizzle(UIWindow.class, @selector(makeKeyWindow), @selector(hook_makeKeyWindow));
         swizzle(UIWindow.class, @selector(setHidden:), @selector(hook_setHidden:));
         // Fix apps that do not support UISceneDelegate getting 0 status bar frame
         swizzle(UIApplication.class, @selector(statusBarFrame), @selector(hook_statusBarFrame));
+        // Legacy AppDelegate guests: keep windows synced across Duo Fold↔Unfold.
+        LCInstallGeometrySyncIfNeeded();
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            // Poll scene bounds while active — coordinateSpace changes on Fold↔Unfold
+            // without a reliable public notification on all iOS 27 builds.
+            [NSTimer scheduledTimerWithTimeInterval:0.25 repeats:YES block:^(__unused NSTimer *timer) {
+                if (!LCGuestUsesLegacyAppDelegate) {
+                    return;
+                }
+                UIWindowScene *scene = LCForegroundWindowScene();
+                if (scene.activationState == UISceneActivationStateForegroundActive) {
+                    LCSyncGuestWindowsToSceneBounds(scene);
+                }
+            }];
+        }];
     }
     [self hook_setDelegate:delegate];
 }
@@ -653,7 +745,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 }
 
 - (CGRect)hook_statusBarFrame {
-    UIStatusBarManager* manager = [(UIWindowScene*)(UIApplication.sharedApplication.connectedScenes.anyObject) statusBarManager];
+    UIStatusBarManager* manager = [LCForegroundWindowScene() statusBarManager];
     if(manager) {
         return manager.statusBarFrame;
     } else {
@@ -769,10 +861,25 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     [self hook_setHidden:hidden];
 }
 - (void)updateWindowScene {
+    UIWindowScene *preferred = LCForegroundWindowScene();
+    if (!self.windowScene && preferred) {
+        self.windowScene = preferred;
+        self.frame = preferred.coordinateSpace.bounds;
+        return;
+    }
     for(UIWindowScene *windowScene in UIApplication.sharedApplication.connectedScenes) {
         if(!self.windowScene && self.screen == windowScene.screen) {
             self.windowScene = windowScene;
+            self.frame = windowScene.coordinateSpace.bounds;
             break;
+        }
+    }
+    if (self.windowScene) {
+        CGRect bounds = self.windowScene.coordinateSpace.bounds;
+        if (!CGRectEqualToRect(self.frame, bounds) && LCGuestUsesLegacyAppDelegate) {
+            self.frame = bounds;
+            [self setNeedsLayout];
+            [self layoutIfNeeded];
         }
     }
 }

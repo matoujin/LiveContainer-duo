@@ -6,6 +6,7 @@
 //
 
 import AppIntents
+import Darwin
 import UIKit
 
 private struct LaunchAppExtensionError: LocalizedError {
@@ -224,7 +225,16 @@ struct LaunchAppExtension: AppIntent {
         }
 
         var launchOptions: [String: Any] = ["url": newURL]
-        if allowClassicMode {
+        // iPhone Duo (iPhone19,4): never ActivateAsClassic — SpringBoard would lock
+        // the host into a 375×667 right-half compat window across Fold↔Unfold.
+        let isPhoneDuo: Bool = {
+            var size = 0
+            sysctlbyname("hw.machine", nil, &size, nil, 0)
+            var machine = [CChar](repeating: 0, count: size)
+            sysctlbyname("hw.machine", &machine, &size, nil, 0)
+            return String(cString: machine) == "iPhone19,4"
+        }()
+        if allowClassicMode && !isPhoneDuo {
             let cachedClassicMode = (appInfo["classicMode"] as? Bool ?? false)
                 ? ((appInfo["LCClassicModeCache"] as? [String: Any])?["defaultClassicMode"] as? NSNumber)?.uintValue ?? 0
                 : 0
