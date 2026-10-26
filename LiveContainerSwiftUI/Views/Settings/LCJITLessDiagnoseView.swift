@@ -189,6 +189,13 @@ struct LCJITLessDiagnoseView : View {
             Form {
                 Section {
                     HStack {
+                        Text("Version")
+                        Spacer()
+                        Text("\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"))")
+                            .foregroundStyle(.gray)
+                            .textSelection(.enabled)
+                    }
+                    HStack {
                         Text("lc.jitlessDiag.bundleId".loc)
                         Spacer()
                         Text(Bundle.main.bundleIdentifier ?? "lc.common.unknown".loc)
@@ -207,6 +214,11 @@ struct LCJITLessDiagnoseView : View {
                         Spacer()
                         Text(appGroupAccessible ? "lc.common.yes".loc : "lc.common.no".loc)
                             .foregroundStyle(appGroupAccessible ? .green : .red)
+                    }
+                    if LCSharedUtils.isAppGroupUnavailable() {
+                        Text("App Group container unavailable — using sandbox Documents fallback (host still boots).")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
                     }
                     HStack {
                         Text("lc.jitlessDiag.store".loc)
@@ -359,14 +371,19 @@ struct LCJITLessDiagnoseView : View {
         
         if let fetchedAppGroupId = LCSharedUtils.appGroupID() {
             appGroupId = fetchedAppGroupId
-            if UserDefaults.sideStoreExist() {
-                if fetchedAppGroupId == "group.com.SideStore.SideStore." + teamId {
-                    appGroupIdColor = .green
-                } else {
-                    appGroupIdColor = .orange
-                }
-            } else {
+            let bareSideStore = "group.com.SideStore.SideStore"
+            let bareAltStore = "group.com.rileytestut.AltStore"
+            let teamSideStore = bareSideStore + "." + teamId
+            let teamAltStore = bareAltStore + "." + teamId
+            if fetchedAppGroupId == bareSideStore
+                || fetchedAppGroupId == bareAltStore
+                || fetchedAppGroupId == teamSideStore
+                || fetchedAppGroupId == teamAltStore {
                 appGroupIdColor = .green
+            } else if fetchedAppGroupId == "Unknown" {
+                appGroupIdColor = .red
+            } else {
+                appGroupIdColor = .orange
             }
         } else {
             appGroupId = "lc.common.unknown".loc
@@ -374,7 +391,9 @@ struct LCJITLessDiagnoseView : View {
         }
         
         store = LCUtils.store()
-        appGroupAccessible = LCSharedUtils.appGroupPath() != nil
+        // Green only when the real system App Group container is mounted.
+        // Sandbox fallback still boots the host but shows as inaccessible here.
+        appGroupAccessible = !LCSharedUtils.isAppGroupUnavailable() && LCSharedUtils.appGroupPath() != nil
         certificateDataFound = LCUtils.certificateData() != nil
         certificatePasswordFound = LCSharedUtils.certificatePassword() != nil
         if let lastUpdateDate = LCUtils.appGroupUserDefault.object(forKey: "LCCertificateUpdateDate") as? Date {

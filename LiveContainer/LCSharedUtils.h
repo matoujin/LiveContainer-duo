@@ -1,9 +1,15 @@
 @import Foundation;
 
+/// Non-blocking cached group ID for GuestHooks (never triggers +appGroupID once).
+NSString *LCSharedUtilsCachedAppGroupID(void);
+
 @interface LCSharedUtils : NSObject
 + (NSString*) teamIdentifier;
 + (NSString *)appGroupID;
 + (NSURL*) appGroupPath;
+/// YES when system App Group container was unavailable and sandbox fallback is in use.
++ (BOOL)isAppGroupUnavailable;
++ (void)setAppGroupUnavailable:(BOOL)unavailable;
 + (NSString *)certificatePassword;
 + (BOOL)launchToGuestAppWithClassicMode:(NSUInteger)classicMode;
 + (BOOL)launchToGuestAppWithURL:(NSURL *)url;

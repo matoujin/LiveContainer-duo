@@ -288,7 +288,15 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
 
     // not found locally, let's look for the app in shared folder
     if(!guestAppInfo) {
+        LCAppGroupProbePassThroughBegin();
         NSURL *appGroupPath = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[LCSharedUtils appGroupID]];
+        LCAppGroupProbePassThroughEnd();
+        if (!appGroupPath && lcAppGroupPath.length > 0) {
+            appGroupPath = [NSURL fileURLWithPath:lcAppGroupPath];
+        }
+        if (!appGroupPath) {
+            return @"App Group path unavailable";
+        }
         appGroupFolder = [appGroupPath URLByAppendingPathComponent:@"LiveContainer"];
         bundlePath = [NSString stringWithFormat:@"%@/Applications/%@", appGroupFolder.path, selectedApp];
         guestAppInfo = [NSDictionary dictionaryWithContentsOfFile:[NSString stringWithFormat:@"%@/LCAppInfo.plist", bundlePath]];
@@ -665,12 +673,41 @@ static void exceptionHandler(NSException *exception) {
 int LiveContainerMain(int argc, char *argv[]) {
     lcMainBundle = [NSBundle mainBundle];
     lcUserDefaults = NSUserDefaults.standardUserDefaults;
-    
-    lcSharedDefaults = [[NSUserDefaults alloc] initWithSuiteName: [LCSharedUtils appGroupID]];
+
+    // Seed LC_HOME_PATH before any App Group lookup so GuestHooks nil-guards
+    // have a usable fallback if the App Group container isn't mounted yet.
+    const char *homeEnv = getenv("HOME");
+    if (homeEnv && homeEnv[0] != '\0') {
+        setenv("LC_HOME_PATH", homeEnv, 0);
+    }
+
+    NSString *resolvedGroupID = [LCSharedUtils appGroupID];
+    NSURL *groupURL = nil;
+    if (resolvedGroupID.length > 0 && ![resolvedGroupID isEqualToString:@"Unknown"]) {
+        lcSharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:resolvedGroupID];
+        LCAppGroupProbePassThroughBegin();
+        groupURL = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:resolvedGroupID];
+        LCAppGroupProbePassThroughEnd();
+    } else {
+        lcSharedDefaults = nil;
+    }
+
+    if (groupURL.path.length > 0) {
+        lcAppGroupPath = groupURL.path;
+        [LCSharedUtils setAppGroupUnavailable:NO];
+    } else {
+        // System App Group container unavailable (common after free-sign resign).
+        // Fall back to a stable sandbox path so hooks never see nil and the host still boots.
+        NSString *home = homeEnv ? @(homeEnv) : NSHomeDirectory();
+        NSString *fallback = [home stringByAppendingPathComponent:@"Documents/LCAppGroupFallback"];
+        [NSFileManager.defaultManager createDirectoryAtPath:fallback withIntermediateDirectories:YES attributes:nil error:nil];
+        lcAppGroupPath = fallback;
+        [LCSharedUtils setAppGroupUnavailable:YES];
+        NSLog(@"[LiveContainer] App Group container unavailable (id=%@); using sandbox fallback %@",
+              resolvedGroupID ?: @"Unknown", fallback);
+    }
     lcAppUrlScheme = NSBundle.mainBundle.infoDictionary[@"CFBundleURLTypes"][0][@"CFBundleURLSchemes"][0];
-    lcAppGroupPath = [[NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[NSClassFromString(@"LCSharedUtils") appGroupID]] path];
     isLiveProcess = [lcAppUrlScheme isEqualToString:@"liveprocess"];
-    setenv("LC_HOME_PATH", getenv("HOME"), 0);
 
     NSString *selectedApp = [lcUserDefaults stringForKey:@"selected"];
     NSString *selectedContainer = [lcUserDefaults stringForKey:@"selectedContainer"];
@@ -857,8 +894,11 @@ int LiveContainerMain(int argc, char *argv[]) {
     if ([lcUserDefaults boolForKey:@"LCLoadTweaksToSelf"]) {
         NSString *tweakFolder = nil;
         if (isSharedBundle) {
+            LCAppGroupProbePassThroughBegin();
             NSURL *appGroupPath = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[LCSharedUtils appGroupID]];
-            tweakFolder = [appGroupPath.path stringByAppendingPathComponent:@"LiveContainer/Tweaks"];
+            LCAppGroupProbePassThroughEnd();
+            NSString *base = appGroupPath.path.length > 0 ? appGroupPath.path : lcAppGroupPath;
+            tweakFolder = [base stringByAppendingPathComponent:@"LiveContainer/Tweaks"];
         } else {
             NSString *docPath = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].lastObject.path;
             tweakFolder = [docPath stringByAppendingPathComponent:@"Tweaks"];
