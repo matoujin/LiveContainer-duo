@@ -35,17 +35,43 @@ void NSFMGuestHooksInit(void) {
 @implementation NSFileManager(LiveContainerHooks)
 
 - (nullable NSURL *)hook_containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier {
-    if([groupIdentifier isEqualToString:[NSClassFromString(@"LCSharedUtils") appGroupID]]) {
-        return [NSURL fileURLWithPath: NSUserDefaults.lcAppGroupPath];
+    // Never pass nil/empty into +[NSURL fileURLWithPath:] — crashes hard
+    // when App Group isn't ready yet (e.g. SideStore resign / early launch).
+    NSString *lcGroupID = [NSClassFromString(@"LCSharedUtils") appGroupID];
+    if (groupIdentifier.length > 0 && lcGroupID.length > 0 &&
+        ![lcGroupID isEqualToString:@"Unknown"] &&
+        [groupIdentifier isEqualToString:lcGroupID]) {
+        NSString *path = NSUserDefaults.lcAppGroupPath;
+        if (path.length > 0) {
+            return [NSURL fileURLWithPath:path];
+        }
+        // Path not set yet — use the real system implementation (swizzled original).
+        return [self hook_containerURLForSecurityApplicationGroupIdentifier:groupIdentifier];
     }
-    NSURL *result;
-    if(isolateAppGroup) {
-        result = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/LCAppGroup/%@", getenv("HOME"), groupIdentifier]];
-    } else if (NSUserDefaults.lcAppGroupPath){
-        result = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%@/LiveContainer/Data/AppGroup/%@", NSUserDefaults.lcAppGroupPath, groupIdentifier]];
+
+    NSString *pathString = nil;
+    if (isolateAppGroup) {
+        const char *home = getenv("HOME");
+        if (home && home[0] != '\0' && groupIdentifier.length > 0) {
+            pathString = [NSString stringWithFormat:@"%s/LCAppGroup/%@", home, groupIdentifier];
+        }
+    } else if (NSUserDefaults.lcAppGroupPath.length > 0 && groupIdentifier.length > 0) {
+        pathString = [NSString stringWithFormat:@"%@/LiveContainer/Data/AppGroup/%@", NSUserDefaults.lcAppGroupPath, groupIdentifier];
     } else {
-        result = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s/Documents/Data/AppGroup/%@", getenv("LC_HOME_PATH"), groupIdentifier]];
+        const char *lcHome = getenv("LC_HOME_PATH");
+        if ((!lcHome || lcHome[0] == '\0')) {
+            lcHome = getenv("HOME");
+        }
+        if (lcHome && lcHome[0] != '\0' && groupIdentifier.length > 0) {
+            pathString = [NSString stringWithFormat:@"%s/Documents/Data/AppGroup/%@", lcHome, groupIdentifier];
+        }
     }
+
+    if (pathString.length == 0) {
+        return [self hook_containerURLForSecurityApplicationGroupIdentifier:groupIdentifier];
+    }
+
+    NSURL *result = [NSURL fileURLWithPath:pathString];
     [NSFileManager.defaultManager createDirectoryAtURL:[result URLByAppendingPathComponent:@"Library/Caches"] withIntermediateDirectories:YES attributes:nil error:nil];
     return result;
 }

@@ -6,17 +6,54 @@ wget https://github.com/LiveContainer/dylibify/releases/download/1.0/dylibify
 chmod +x dylibify
 brew install ldid
 
+# Re-sign a Mach-O while preserving its existing entitlements.
+# NEVER use `ldid -S""` on LiveContainer host binaries — that wipes
+# com.apple.security.application-groups and causes SideStore installs to
+# crash at launch (nil App Group path → fileURLWithPath:).
+resign_preserve_ents() {
+  bin="$1"
+  ent_xml="${bin}.ent.xml"
+  # Skip non-Mach-O quietly
+  if ! file "$bin" | grep -q 'Mach-O'; then
+    return 0
+  fi
+  case "$bin" in
+    *LiveWidgetExtension)
+      ldid -S.github/sidelc/LiveWidgetExtension_adhoc.xml "$bin" || true
+      return 0
+      ;;
+  esac
+  # Export current entitlements; skip resign if export fails / empty
+  if ! ldid -e "$bin" > "$ent_xml" 2>/dev/null; then
+    rm -f "$ent_xml"
+    echo "warn: skip resign (ldid -e failed): $bin" >&2
+    return 0
+  fi
+  if [ ! -s "$ent_xml" ]; then
+    # Binary had no entitlements blob — leave signature alone rather than
+    # blank-signing (which would also strip future SideStore templates).
+    rm -f "$ent_xml"
+    echo "warn: skip resign (empty entitlements): $bin" >&2
+    return 0
+  fi
+  ldid -S"$ent_xml" "$bin" || echo "warn: ldid -S preserve failed: $bin" >&2
+  rm -f "$ent_xml"
+}
+
+resign_app_machos() {
+  root="$1"
+  find "$root" -type f \( -perm -111 -o -name '*.dylib' \) ! -path '*/_CodeSignature/*' | while read -r bin; do
+    resign_preserve_ents "$bin"
+  done
+}
+
 # move lc to working folder
 mv "$archive_path.xcarchive/Products/Applications" Payload
 
 # Stamp host LiveContainer.app for iPhone Duo / iOS 27.1 before packaging standalone IPA
 python3 .github/patch_duo_sdk.py Payload/LiveContainer.app
-# Ad-hoc resign host binaries after Mach-O / Info.plist edits
-find Payload/LiveContainer.app -type f \( -perm -111 -o -name '*.dylib' \) ! -path '*/_CodeSignature/*' | while read -r bin; do
-  if file "$bin" | grep -q 'Mach-O'; then
-    ldid -S"" "$bin" || true
-  fi
-done
+# Refresh CodeDirectory after Mach-O / Info.plist edits — keep original entitlements
+resign_app_machos Payload/LiveContainer.app
 
 # temporarily move sidestore support framrwork to tmp before zip
 mkdir -p tmp
@@ -63,10 +100,19 @@ cd ..
 
 # SideStore
 mv ./tmp/Payload/SideStore.app ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework
+# Export SideStore entitlements BEFORE dylibify (never blank-sign host or SideStore).
+SIDE_ENT="./tmp/SideStore.ent.xml"
+ldid -e ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore > "$SIDE_ENT" 2>/dev/null || true
 ./dylibify ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore.dylib
 rm ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore
 mv ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore.dylib ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore
-ldid -S"" ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore
+if [ -s "$SIDE_ENT" ]; then
+  ldid -S"$SIDE_ENT" ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore
+else
+  # No entitlements blob to restore — pseudo-sign without injecting empty ents.
+  ldid -s ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/SideStore || true
+fi
+rm -f "$SIDE_ENT"
 cp ./.github/sidelc/LCAppInfo.plist ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/
 
 # copy intents
@@ -92,19 +138,9 @@ ldid -S.github/sidelc/LiveWidgetExtension_adhoc.xml ./Payload/LiveContainer.app/
 # Stamp entire payload again (host + SideStoreApp.framework + PlugIns/*.appex + Frameworks)
 python3 .github/patch_duo_sdk.py Payload/LiveContainer.app
 
-# Ad-hoc resign everything after Duo SDK / Mach-O stamp
-find Payload/LiveContainer.app -type f \( -perm -111 -o -name '*.dylib' \) ! -path '*/_CodeSignature/*' | while read -r bin; do
-  if file "$bin" | grep -q 'Mach-O'; then
-    case "$bin" in
-      *LiveWidgetExtension)
-        ldid -S.github/sidelc/LiveWidgetExtension_adhoc.xml "$bin" || true
-        ;;
-      *)
-        ldid -S"" "$bin" || true
-        ;;
-    esac
-  fi
-done
+# Ad-hoc resign after Duo SDK / Mach-O stamp — preserve host entitlements.
+# Never blank-sign (`ldid -S""`). LiveWidgetExtension uses adhoc xml with application-groups.
+resign_app_machos Payload/LiveContainer.app
 
 # package Duo + SideStore
 zip -r "LiveContainer+SideStore_duo_ios27.1.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"

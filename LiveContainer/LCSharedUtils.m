@@ -132,7 +132,14 @@ static BOOL LCSharedUtilsIsPhoneDuo(void) {
     static NSURL *appGroupPath = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        appGroupPath = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[LCSharedUtils appGroupID]];
+        NSString *groupID = [LCSharedUtils appGroupID];
+        // Don't assume a container exists when detection fell back to "Unknown"
+        // (no App Group entitlement / SideStore resign hasn't remounted yet).
+        if (groupID.length == 0 || [groupID isEqualToString:@"Unknown"]) {
+            appGroupPath = nil;
+            return;
+        }
+        appGroupPath = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:groupID];
     });
     return appGroupPath;
 }

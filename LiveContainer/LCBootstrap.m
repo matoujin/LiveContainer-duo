@@ -665,12 +665,25 @@ static void exceptionHandler(NSException *exception) {
 int LiveContainerMain(int argc, char *argv[]) {
     lcMainBundle = [NSBundle mainBundle];
     lcUserDefaults = NSUserDefaults.standardUserDefaults;
-    
-    lcSharedDefaults = [[NSUserDefaults alloc] initWithSuiteName: [LCSharedUtils appGroupID]];
+
+    // Seed LC_HOME_PATH before any App Group lookup so GuestHooks nil-guards
+    // have a usable fallback if the App Group container isn't mounted yet.
+    const char *homeEnv = getenv("HOME");
+    if (homeEnv && homeEnv[0] != '\0') {
+        setenv("LC_HOME_PATH", homeEnv, 0);
+    }
+
+    NSString *resolvedGroupID = [LCSharedUtils appGroupID];
+    if (resolvedGroupID.length > 0 && ![resolvedGroupID isEqualToString:@"Unknown"]) {
+        lcSharedDefaults = [[NSUserDefaults alloc] initWithSuiteName:resolvedGroupID];
+        NSURL *groupURL = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:resolvedGroupID];
+        lcAppGroupPath = groupURL.path; // may still be nil if container isn't available
+    } else {
+        lcSharedDefaults = nil;
+        lcAppGroupPath = nil;
+    }
     lcAppUrlScheme = NSBundle.mainBundle.infoDictionary[@"CFBundleURLTypes"][0][@"CFBundleURLSchemes"][0];
-    lcAppGroupPath = [[NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[NSClassFromString(@"LCSharedUtils") appGroupID]] path];
     isLiveProcess = [lcAppUrlScheme isEqualToString:@"liveprocess"];
-    setenv("LC_HOME_PATH", getenv("HOME"), 0);
 
     NSString *selectedApp = [lcUserDefaults stringForKey:@"selected"];
     NSString *selectedContainer = [lcUserDefaults stringForKey:@"selectedContainer"];
