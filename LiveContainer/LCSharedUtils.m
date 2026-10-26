@@ -2,6 +2,7 @@
 #import "FoundationPrivate.h"
 #import "UIKitPrivate.h"
 #import "utils.h"
+#import "Tweaks/Tweaks.h"
 @import MachO;
 #include <sys/sysctl.h>
 #include <stdlib.h>
@@ -9,6 +10,15 @@
 extern NSUserDefaults *lcUserDefaults;
 extern NSString *lcAppUrlScheme;
 extern NSBundle *lcMainBundle;
+
+// Written when +appGroupID finishes resolving — GuestHooks must read this instead
+// of calling +appGroupID (avoids dispatch_once re-entrancy through the hook).
+static NSString *gLCCachedAppGroupID = nil;
+static BOOL gLCAppGroupUnavailable = NO;
+
+NSString *LCSharedUtilsCachedAppGroupID(void) {
+    return gLCCachedAppGroupID;
+}
 
 NSString* FBSOpenApplicationOptionKeyActivateAsClassic = @"__ActivateAsClassic";
 NSString* FBSOpenApplicationOptionKeyPayloadURL = @"__PayloadURL";
@@ -76,54 +86,102 @@ static BOOL LCSharedUtilsIsPhoneDuo(void) {
     static dispatch_once_t once;
     static NSString *appGroupID = @"Unknown";
     dispatch_once(&once, ^{
-        NSArray* possibleAppGroups = @[
-            [@"group.com.SideStore.SideStore." stringByAppendingString:[self teamIdentifier]],
-            [@"group.com.rileytestut.AltStore." stringByAppendingString:[self teamIdentifier]]
-        ];
-        
-        // we prefer app groups with "Apps" in it, which indicate this app group is actually used by the store.
+        // Always probe via the real NSFileManager — GuestHooks must not remapping
+        // or call back into +appGroupID while this once block runs.
+        LCAppGroupProbePassThroughBegin();
+
+        NSString *team = [self teamIdentifier] ?: @"";
+        NSMutableArray<NSString *> *possibleAppGroups = [NSMutableArray array];
+
+        // Prefer bare groups matching ad-hoc / SideStore package entitlements
+        // (group.com.SideStore.SideStore) before legacy team-suffixed store IDs.
+        [possibleAppGroups addObject:@"group.com.SideStore.SideStore"];
+        [possibleAppGroups addObject:@"group.com.rileytestut.AltStore"];
+        if (team.length > 0) {
+            [possibleAppGroups addObject:[@"group.com.SideStore.SideStore." stringByAppendingString:team]];
+            [possibleAppGroups addObject:[@"group.com.rileytestut.AltStore." stringByAppendingString:team]];
+        }
+
+        // Also consider every group actually present on the signed executable.
+        CFErrorRef error = NULL;
+        void *taskSelf = SecTaskCreateFromSelf(NULL);
+        CFTypeRef value = SecTaskCopyValueForEntitlement(taskSelf, CFSTR("com.apple.security.application-groups"), &error);
+        if (taskSelf) {
+            CFRelease(taskSelf);
+        }
+        NSArray *entitlementGroups = nil;
+        if (value && CFGetTypeID(value) == CFArrayGetTypeID()) {
+            entitlementGroups = (__bridge NSArray *)value;
+            for (NSString *group in entitlementGroups) {
+                if ([group isKindOfClass:NSString.class] && group.length > 0 &&
+                    ![possibleAppGroups containsObject:group]) {
+                    [possibleAppGroups addObject:group];
+                }
+            }
+        }
+
+        // Prefer app groups with "Apps" (SideStore/AltStore layout).
         for (NSString *group in possibleAppGroups) {
             NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:group];
-            if(!path) {
+            if (!path) {
                 continue;
             }
             NSURL *bundlePath = [path URLByAppendingPathComponent:@"Apps"];
             if ([NSFileManager.defaultManager fileExistsAtPath:bundlePath.path]) {
-                // This will fail if LiveContainer is installed in both stores, but it should never be the case
                 appGroupID = group;
-                return;
+                goto done;
             }
         }
-        
-        // if no "Apps" is found, we choose a valid group
+
+        // Otherwise any group the system mounts.
         for (NSString *group in possibleAppGroups) {
             NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:group];
-            if(!path) {
+            if (!path) {
                 continue;
             }
             appGroupID = group;
-            return;
+            goto done;
         }
-        
-        // if no possibleAppGroup is found, we detect app group from entitlement file
-        // Cache app group after importing cert so we don't have to analyze executable every launch
+
+        // Cached ID from a previous successful cert import.
         NSString *cached = [lcUserDefaults objectForKey:@"LCAppGroupID"];
-        if (cached && [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:cached]) {
-            appGroupID = cached;
-            return;
+        if (cached.length > 0) {
+            NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:cached];
+            if (path) {
+                appGroupID = cached;
+                goto done;
+            }
         }
-        CFErrorRef error = NULL;
-        void* taskSelf = SecTaskCreateFromSelf(NULL);
-        CFTypeRef value = SecTaskCopyValueForEntitlement(taskSelf, CFSTR("com.apple.security.application-groups"), &error);
-        CFRelease(taskSelf);
-        
-        if(!value) {
-            return;
+
+        // Entitlements list even if the container isn't mounted yet (free-sign).
+        // Pick SideStore/AltStore bare IDs first when present.
+        if (entitlementGroups.count > 0) {
+            NSArray *preferredBare = @[
+                @"group.com.SideStore.SideStore",
+                @"group.com.rileytestut.AltStore",
+            ];
+            for (NSString *pref in preferredBare) {
+                if ([entitlementGroups containsObject:pref]) {
+                    appGroupID = pref;
+                    goto done;
+                }
+            }
+            NSString *first = entitlementGroups.firstObject;
+            if ([first isKindOfClass:NSString.class] && first.length > 0) {
+                appGroupID = first;
+            }
         }
-        NSArray* appGroups = (__bridge NSArray *)value;
-        if(appGroups.count > 0) {
-            appGroupID = [appGroups firstObject];
+
+    done:
+        if ([appGroupID isEqualToString:@"Unknown"]) {
+            gLCCachedAppGroupID = nil;
+        } else {
+            gLCCachedAppGroupID = appGroupID;
         }
+        if (value) {
+            CFRelease(value);
+        }
+        LCAppGroupProbePassThroughEnd();
     });
     return appGroupID;
 }
@@ -133,15 +191,24 @@ static BOOL LCSharedUtilsIsPhoneDuo(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         NSString *groupID = [LCSharedUtils appGroupID];
-        // Don't assume a container exists when detection fell back to "Unknown"
-        // (no App Group entitlement / SideStore resign hasn't remounted yet).
         if (groupID.length == 0 || [groupID isEqualToString:@"Unknown"]) {
             appGroupPath = nil;
             return;
         }
+        LCAppGroupProbePassThroughBegin();
         appGroupPath = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:groupID];
+        LCAppGroupProbePassThroughEnd();
     });
     return appGroupPath;
+}
+
++ (BOOL)isAppGroupUnavailable {
+    return gLCAppGroupUnavailable;
+}
+
++ (void)setAppGroupUnavailable:(BOOL)unavailable {
+    gLCAppGroupUnavailable = unavailable;
+    [lcUserDefaults setBool:unavailable forKey:@"LCAppGroupUnavailable"];
 }
 
 + (NSString *)certificatePassword {

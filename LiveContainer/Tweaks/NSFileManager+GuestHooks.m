@@ -5,9 +5,49 @@
 #include "../../litehook/src/litehook.h"
 #include "../LCMachOUtils.h"
 #include <dlfcn.h>
+#include <stdatomic.h>
+
+// Marker baked into LiveContainerShared so IPA strings(1) can prove nil-safe hooks shipped.
+// Do not remove — used for duo-latest self-check (LC_APPGROUP_NILSAFE_v2).
+__attribute__((used)) static const char kLCAppGroupNilSafeMarker[] = "LC_APPGROUP_NILSAFE_v2";
 
 BOOL isolateAppGroup = NO;
 void* webKitHeader = 0;
+
+// While appGroupID / bootstrap probe system containers, skip guest remapping and
+// call through to the real NSFileManager implementation (post-swizzle: hook_*).
+static atomic_int gLCAppGroupProbePassThrough = 0;
+
+void LCAppGroupProbePassThroughBegin(void) {
+    atomic_fetch_add_explicit(&gLCAppGroupProbePassThrough, 1, memory_order_acq_rel);
+}
+
+void LCAppGroupProbePassThroughEnd(void) {
+    atomic_fetch_sub_explicit(&gLCAppGroupProbePassThrough, 1, memory_order_acq_rel);
+}
+
+static BOOL LCAppGroupProbePassThroughActive(void) {
+    return atomic_load_explicit(&gLCAppGroupProbePassThrough, memory_order_acquire) > 0;
+}
+
+static NSURL *LCSafeFileURLWithPath(NSString *path) {
+    if (path.length == 0) {
+        return nil;
+    }
+    return [NSURL fileURLWithPath:path];
+}
+
+static NSString *LCFallbackAppGroupRoot(void) {
+    const char *lcHome = getenv("LC_HOME_PATH");
+    if (!lcHome || lcHome[0] == '\0') {
+        lcHome = getenv("HOME");
+    }
+    if (!lcHome || lcHome[0] == '\0') {
+        return nil;
+    }
+    return [NSString stringWithFormat:@"%s/Documents/Data/AppGroup", lcHome];
+}
+
 void NSFMGuestHooksInit(void) {
     NSDictionary* infoDict = [NSUserDefaults guestContainerInfo];
     isolateAppGroup = [infoDict[@"isolateAppGroup"] boolValue];
@@ -35,43 +75,51 @@ void NSFMGuestHooksInit(void) {
 @implementation NSFileManager(LiveContainerHooks)
 
 - (nullable NSURL *)hook_containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier {
-    // Never pass nil/empty into +[NSURL fileURLWithPath:] — crashes hard
-    // when App Group isn't ready yet (e.g. SideStore resign / early launch).
-    NSString *lcGroupID = [NSClassFromString(@"LCSharedUtils") appGroupID];
-    if (groupIdentifier.length > 0 && lcGroupID.length > 0 &&
-        ![lcGroupID isEqualToString:@"Unknown"] &&
-        [groupIdentifier isEqualToString:lcGroupID]) {
-        NSString *path = NSUserDefaults.lcAppGroupPath;
-        if (path.length > 0) {
-            return [NSURL fileURLWithPath:path];
-        }
-        // Path not set yet — use the real system implementation (swizzled original).
+    // Probe pass-through: after swizzle, this selector holds the ORIGINAL IMP.
+    if (LCAppGroupProbePassThroughActive()) {
         return [self hook_containerURLForSecurityApplicationGroupIdentifier:groupIdentifier];
+    }
+
+    if (groupIdentifier.length == 0) {
+        return nil;
+    }
+
+    // Never call +[LCSharedUtils appGroupID] here — that method probes via
+    // containerURL and would re-enter this hook / dispatch_once.
+    // Use the cached ID written after resolution (may be nil before bootstrap).
+    NSString *cachedGroupID = LCSharedUtilsCachedAppGroupID();
+    if (cachedGroupID.length > 0 &&
+        ![cachedGroupID isEqualToString:@"Unknown"] &&
+        [groupIdentifier isEqualToString:cachedGroupID]) {
+        NSString *path = NSUserDefaults.lcAppGroupPath;
+        NSURL *url = LCSafeFileURLWithPath(path);
+        if (url) {
+            return url;
+        }
+        // System / bootstrap path missing — fall through to sandbox remap below.
     }
 
     NSString *pathString = nil;
     if (isolateAppGroup) {
         const char *home = getenv("HOME");
-        if (home && home[0] != '\0' && groupIdentifier.length > 0) {
+        if (home && home[0] != '\0') {
             pathString = [NSString stringWithFormat:@"%s/LCAppGroup/%@", home, groupIdentifier];
         }
-    } else if (NSUserDefaults.lcAppGroupPath.length > 0 && groupIdentifier.length > 0) {
+    } else if (NSUserDefaults.lcAppGroupPath.length > 0) {
         pathString = [NSString stringWithFormat:@"%@/LiveContainer/Data/AppGroup/%@", NSUserDefaults.lcAppGroupPath, groupIdentifier];
     } else {
-        const char *lcHome = getenv("LC_HOME_PATH");
-        if ((!lcHome || lcHome[0] == '\0')) {
-            lcHome = getenv("HOME");
-        }
-        if (lcHome && lcHome[0] != '\0' && groupIdentifier.length > 0) {
-            pathString = [NSString stringWithFormat:@"%s/Documents/Data/AppGroup/%@", lcHome, groupIdentifier];
+        NSString *root = LCFallbackAppGroupRoot();
+        if (root.length > 0) {
+            pathString = [root stringByAppendingPathComponent:groupIdentifier];
         }
     }
 
-    if (pathString.length == 0) {
+    NSURL *result = LCSafeFileURLWithPath(pathString);
+    if (!result) {
+        // Last resort: original system implementation (may return nil; never crash).
         return [self hook_containerURLForSecurityApplicationGroupIdentifier:groupIdentifier];
     }
 
-    NSURL *result = [NSURL fileURLWithPath:pathString];
     [NSFileManager.defaultManager createDirectoryAtURL:[result URLByAppendingPathComponent:@"Library/Caches"] withIntermediateDirectories:YES attributes:nil error:nil];
     return result;
 }
@@ -87,10 +135,17 @@ void NSFMGuestHooksInit(void) {
             // see NSFileManager+GuestHooks.m for more info
             NSFileManager *fm = NSFileManager.defaultManager;
             const char *lcHomePath = getenv(NSUserDefaults.isLiveProcess ? "LP_HOME_PATH" : "LC_HOME_PATH");
+            if (!lcHomePath || lcHomePath[0] == '\0') {
+                return ans;
+            }
             NSString *libraryPath = [@(lcHomePath) stringByAppendingPathComponent:@"Library"];
             NSString *cookies2Path = [libraryPath stringByAppendingPathComponent:@"Cookies2"];
             NSString *cookiesPath = [libraryPath stringByAppendingPathComponent:@"Cookies"];
-            NSString* appCookiesPath = [@(getenv("HOME")) stringByAppendingPathComponent:@"Library/Cookies"];
+            const char *home = getenv("HOME");
+            if (!home || home[0] == '\0') {
+                return ans;
+            }
+            NSString* appCookiesPath = [@(home) stringByAppendingPathComponent:@"Library/Cookies"];
             BOOL isDir = NO;
             if (![fm fileExistsAtPath:cookies2Path isDirectory:&isDir]) {
                 if([fm fileExistsAtPath:cookiesPath isDirectory:&isDir]) {

@@ -16,6 +16,10 @@ void NSURLSCGuestHooksInit(void);
 void initDead10ccFix(void);
 void IDFVHookInit(NSUUID* uuid);
 
+/// Nestable: while >0, GuestHooks pass containerURL lookups to the real NSFileManager.
+void LCAppGroupProbePassThroughBegin(void);
+void LCAppGroupProbePassThroughEnd(void);
+
 @interface NSBundle(LiveContainer)
 - (instancetype)initWithPathForMainBundle:(NSString *)path;
 @end
