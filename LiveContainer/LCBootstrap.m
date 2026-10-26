@@ -894,8 +894,11 @@ int LiveContainerMain(int argc, char *argv[]) {
     if ([lcUserDefaults boolForKey:@"LCLoadTweaksToSelf"]) {
         NSString *tweakFolder = nil;
         if (isSharedBundle) {
+            LCAppGroupProbePassThroughBegin();
             NSURL *appGroupPath = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[LCSharedUtils appGroupID]];
-            tweakFolder = [appGroupPath.path stringByAppendingPathComponent:@"LiveContainer/Tweaks"];
+            LCAppGroupProbePassThroughEnd();
+            NSString *base = appGroupPath.path.length > 0 ? appGroupPath.path : lcAppGroupPath;
+            tweakFolder = [base stringByAppendingPathComponent:@"LiveContainer/Tweaks"];
         } else {
             NSString *docPath = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].lastObject.path;
             tweakFolder = [docPath stringByAppendingPathComponent:@"Tweaks"];
