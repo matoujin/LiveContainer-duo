@@ -120,6 +120,8 @@ static BOOL LCSharedUtilsIsPhoneDuo(void) {
             }
         }
 
+        BOOL resolved = NO;
+
         // Prefer app groups with "Apps" (SideStore/AltStore layout).
         for (NSString *group in possibleAppGroups) {
             NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:group];
@@ -129,33 +131,39 @@ static BOOL LCSharedUtilsIsPhoneDuo(void) {
             NSURL *bundlePath = [path URLByAppendingPathComponent:@"Apps"];
             if ([NSFileManager.defaultManager fileExistsAtPath:bundlePath.path]) {
                 appGroupID = group;
-                goto done;
+                resolved = YES;
+                break;
             }
         }
 
         // Otherwise any group the system mounts.
-        for (NSString *group in possibleAppGroups) {
-            NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:group];
-            if (!path) {
-                continue;
+        if (!resolved) {
+            for (NSString *group in possibleAppGroups) {
+                NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:group];
+                if (!path) {
+                    continue;
+                }
+                appGroupID = group;
+                resolved = YES;
+                break;
             }
-            appGroupID = group;
-            goto done;
         }
 
         // Cached ID from a previous successful cert import.
-        NSString *cached = [lcUserDefaults objectForKey:@"LCAppGroupID"];
-        if (cached.length > 0) {
-            NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:cached];
-            if (path) {
-                appGroupID = cached;
-                goto done;
+        if (!resolved) {
+            NSString *cached = [lcUserDefaults objectForKey:@"LCAppGroupID"];
+            if (cached.length > 0) {
+                NSURL *path = [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:cached];
+                if (path) {
+                    appGroupID = cached;
+                    resolved = YES;
+                }
             }
         }
 
         // Entitlements list even if the container isn't mounted yet (free-sign).
         // Pick SideStore/AltStore bare IDs first when present.
-        if (entitlementGroups.count > 0) {
+        if (!resolved && entitlementGroups.count > 0) {
             NSArray *preferredBare = @[
                 @"group.com.SideStore.SideStore",
                 @"group.com.rileytestut.AltStore",
@@ -163,16 +171,18 @@ static BOOL LCSharedUtilsIsPhoneDuo(void) {
             for (NSString *pref in preferredBare) {
                 if ([entitlementGroups containsObject:pref]) {
                     appGroupID = pref;
-                    goto done;
+                    resolved = YES;
+                    break;
                 }
             }
-            NSString *first = entitlementGroups.firstObject;
-            if ([first isKindOfClass:NSString.class] && first.length > 0) {
-                appGroupID = first;
+            if (!resolved) {
+                NSString *first = entitlementGroups.firstObject;
+                if ([first isKindOfClass:NSString.class] && first.length > 0) {
+                    appGroupID = first;
+                }
             }
         }
 
-    done:
         if ([appGroupID isEqualToString:@"Unknown"]) {
             gLCCachedAppGroupID = nil;
         } else {

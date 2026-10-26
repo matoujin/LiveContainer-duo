@@ -53,10 +53,10 @@ mv "$archive_path.xcarchive/Products/Applications" Payload
 # Stamp host LiveContainer.app for iPhone Duo / iOS 27.1 before packaging standalone IPA
 python3 .github/patch_duo_sdk.py Payload/LiveContainer.app
 # Keep a human-visible build identity in the IPA (Settings / diagnose / IPA Info.plist).
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 3.8.12-duo3" Payload/LiveContainer.app/Info.plist 2>/dev/null || \
-  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 3.8.12-duo3" Payload/LiveContainer.app/Info.plist || true
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 3.8.12.20261026" Payload/LiveContainer.app/Info.plist 2>/dev/null || \
-  /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 3.8.12.20261026" Payload/LiveContainer.app/Info.plist || true
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 3.8.12-duo4" Payload/LiveContainer.app/Info.plist 2>/dev/null || \
+  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 3.8.12-duo4" Payload/LiveContainer.app/Info.plist || true
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 3.8.12.20261026b" Payload/LiveContainer.app/Info.plist 2>/dev/null || \
+  /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 3.8.12.20261026b" Payload/LiveContainer.app/Info.plist || true
 # Refresh CodeDirectory after Mach-O / Info.plist edits — keep original entitlements
 resign_app_machos Payload/LiveContainer.app
 
