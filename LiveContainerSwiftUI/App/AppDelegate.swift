@@ -71,7 +71,11 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate, ObservableObject { // Make
         if newOptions == nil {
             newOptions = UIScene.ActivationRequestOptions()
         }
-        newOptions!._setRequestFullscreen(UIScreen.main.bounds == self.keyWindow!.bounds)
+        // Compare against the key window's scene bounds — UIScreen.main.bounds is
+        // stale across Duo Fold↔Unfold and can incorrectly refuse fullscreen scenes.
+        let sceneBounds = self.keyWindow?.windowScene?.coordinateSpace.bounds ?? UIScreen.main.bounds
+        let windowBounds = self.keyWindow?.bounds ?? .zero
+        newOptions!._setRequestFullscreen(sceneBounds == windowBounds)
         self.hook_requestSceneSessionActivation(sceneSession, userActivity: userActivity, options: newOptions, errorHandler: errorHandler)
     }
     

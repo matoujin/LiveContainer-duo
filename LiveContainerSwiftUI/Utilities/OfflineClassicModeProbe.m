@@ -7,9 +7,82 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 #import <dlfcn.h>
+#import <sys/sysctl.h>
+#import <stdlib.h>
 #import "LCUtils.h"
 
 void bypass_os_variant_has_internal_content(void (^block)(void));
+
+NSArray<NSString *> *LCLegacyLaunchInfoKeys(void) {
+    return @[
+        @"UILaunchImages",
+        @"UILaunchImageFile",
+        @"UILaunchStoryboardName",
+        @"UILaunchStoryboards",
+        @"UIRequiresFullScreen",
+    ];
+}
+
+BOOL LCInfoPlistNeedsModernLaunchScreen(NSDictionary *infoPlist) {
+    if (![infoPlist isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    for (NSString *key in LCLegacyLaunchInfoKeys()) {
+        if (infoPlist[key] != nil) {
+            return YES;
+        }
+    }
+    id launchScreen = infoPlist[@"UILaunchScreen"];
+    if (![launchScreen isKindOfClass:NSDictionary.class]) {
+        return YES;
+    }
+    return NO;
+}
+
+BOOL LCModernizeInfoPlistForDuo(NSMutableDictionary *infoPlist) {
+    if (![infoPlist isKindOfClass:NSMutableDictionary.class]) {
+        return NO;
+    }
+    BOOL changed = NO;
+    for (NSString *key in LCLegacyLaunchInfoKeys()) {
+        if (infoPlist[key] != nil) {
+            [infoPlist removeObjectForKey:key];
+            changed = YES;
+        }
+    }
+    id launchScreen = infoPlist[@"UILaunchScreen"];
+    if (![launchScreen isKindOfClass:NSDictionary.class]) {
+        infoPlist[@"UILaunchScreen"] = @{};
+        changed = YES;
+    }
+    return changed;
+}
+
+NSDictionary *LCModernizedInfoPlistSnapshot(NSDictionary *infoPlist) {
+    NSMutableDictionary *mutable = infoPlist.mutableCopy ?: [NSMutableDictionary new];
+    LCModernizeInfoPlistForDuo(mutable);
+    return mutable.copy;
+}
+
+static BOOL LCDeviceLooksLikePhoneDuo(void) {
+    static dispatch_once_t onceToken;
+    static BOOL isDuo = NO;
+    dispatch_once(&onceToken, ^{
+        NSString *machine = nil;
+        size_t size = 0;
+        sysctlbyname("hw.machine", NULL, &size, NULL, 0);
+        if (size > 0) {
+            char *buf = calloc(1, size);
+            if (buf && sysctlbyname("hw.machine", buf, &size, NULL, 0) == 0) {
+                machine = @(buf);
+            }
+            free(buf);
+        }
+        // iPhone Duo hardware identifier
+        isDuo = [machine isEqualToString:@"iPhone19,4"];
+    });
+    return isDuo;
+}
 
 static BOOL LCSetScalarIvar(id object, const char *name, const void *value, size_t size) {
     Ivar ivar = class_getInstanceVariable(object_getClass(object), name);
@@ -139,10 +212,28 @@ static BOOL LCSetScalarIvar(id object, const char *name, const void *value, size
 
 - (LSBundleInfoCachedValues *)objectsForInfoDictionaryKeys:(NSSet *)keys {
     NSMutableDictionary *result = [NSMutableDictionary dictionaryWithCapacity:keys.count];
+    // Present a Duo-safe Info.plist surface so SpringBoard's classic-mode probe
+    // never sees UILaunchImages / UILaunchStoryboardName / UIRequiresFullScreen.
+    NSDictionary *modernInfo = LCModernizedInfoPlistSnapshot(self.bundle.infoDictionary ?: @{});
     
     for (NSString *key in keys) {
-        id value = [self.bundle objectForInfoDictionaryKey:key];
+        if ([LCLegacyLaunchInfoKeys() containsObject:key]) {
+            continue;
+        }
+        id value = modernInfo[key];
+        if (!value) {
+            value = [self.bundle objectForInfoDictionaryKey:key];
+        }
+        if ([LCLegacyLaunchInfoKeys() containsObject:key]) {
+            continue;
+        }
+        if ([key isEqualToString:@"UILaunchScreen"] && !value) {
+            value = @{};
+        }
         if (value) result[key] = value;
+    }
+    if ([keys containsObject:@"UILaunchScreen"] && !result[@"UILaunchScreen"]) {
+        result[@"UILaunchScreen"] = @{};
     }
     
     return [[PrivClass(LSBundleInfoCachedValues) alloc] _initWithKeys:keys forDictionary:result];
@@ -243,6 +334,13 @@ NSNumber *LCGetDefaultClassicMode(NSURL *appURL) {
     NSBundle *bundle = [NSBundle bundleWithURL:appURL];
     NSURL *executableURL = bundle.executableURL;
     assert(bundle && executableURL);
+
+    // On iPhone Duo, never recommend Classic Mode by default — fixed 375×667
+    // compat windows break Fold↔Unfold. Callers still pass a non-zero mode only
+    // when the user explicitly enables the per-app Classic Mode toggle.
+    if (LCDeviceLooksLikePhoneDuo()) {
+        return @0;
+    }
     
     static Class SBApplicationClass;
     static Class SBApplicationInfoClass;
@@ -274,5 +372,10 @@ NSNumber *LCGetDefaultClassicMode(NSURL *appURL) {
     SBApplication* sbApp = [[SBApplicationClass alloc] initWithApplicationInfo:sbAppInfo];
     assert(sbApp);
     NSInteger mode = [sbApp _defaultClassicMode];
+    // Defensive: even if SpringBoard still reports classic, refuse it unless the
+    // guest still carries unrepaired legacy launch keys (should be rare after patch).
+    if (mode != 0 && !LCInfoPlistNeedsModernLaunchScreen(bundle.infoDictionary ?: @{})) {
+        mode = 0;
+    }
     return @(mode);
 }

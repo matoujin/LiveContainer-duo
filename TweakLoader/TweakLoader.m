@@ -56,8 +56,28 @@ static void loadTweaksRecursively(NSURL *folderURL, NSMutableArray *errors) {
     }
 }
 
+static UIWindowScene *LCTweakLoaderForegroundWindowScene(void) {
+    UIWindowScene *fallback = nil;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) continue;
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        if (windowScene.activationState == UISceneActivationStateForegroundActive) {
+            return windowScene;
+        }
+        if (!fallback) fallback = windowScene;
+    }
+    return fallback;
+}
+
 static void showDlerrAlert(NSString *error) {
-    UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    UIWindowScene *windowScene = LCTweakLoaderForegroundWindowScene();
+    UIWindow *window = nil;
+    if (windowScene) {
+        window = [[UIWindow alloc] initWithWindowScene:windowScene];
+        window.frame = windowScene.coordinateSpace.bounds;
+    } else {
+        window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    }
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Failed to load tweaks" message:error preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         window.windowScene = nil;
@@ -70,7 +90,6 @@ static void showDlerrAlert(NSString *error) {
     [alert addAction:cancelAction];
     window.rootViewController = [UIViewController new];
     window.windowLevel = 1000;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);

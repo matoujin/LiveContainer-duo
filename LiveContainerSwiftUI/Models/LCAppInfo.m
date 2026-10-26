@@ -65,6 +65,12 @@
             [_infoPlist writeBinToFile:[NSString stringWithFormat:@"%@/Info.plist", bundlePath] atomically:YES];
         }
 
+        // iPhone Duo / iOS 27.1: strip fixed-size launch images so SplashBoard
+        // never locks guest windows into 375×667 Classic Mode.
+        if (LCModernizeInfoPlistForDuo(_infoPlist)) {
+            [_infoPlist writeBinToFile:[NSString stringWithFormat:@"%@/Info.plist", bundlePath] atomically:YES];
+        }
+
         _autoSaveDisabled = false;
     }
     return self;
@@ -307,8 +313,8 @@
     NSFileManager* fm = NSFileManager.defaultManager;
     NSString *execPath = [NSString stringWithFormat:@"%@/%@", appPath, _infoPlist[@"CFBundleExecutable"]];
     
-    // Update patch
-    int currentPatchRev = 7;
+    // Update patch (rev 8: Duo UILaunchScreen modernization + classic-mode opt-out)
+    int currentPatchRev = 8;
     bool needPatch = [info[@"LCPatchRevision"] intValue] < currentPatchRev;
     if (needPatch || forceSign) {
         // copy-delete-move to avoid EXC_BAD_ACCESS (SIGKILL - CODESIGNING)
@@ -349,15 +355,25 @@
         self.is32bit = is32bit;
         if (!is32bit) {
             LCPatchAppBundleFixupARM64eSlice([NSURL fileURLWithPath:appPath]);
+            // 64-bit guests default to modern fullscreen — Classic Mode is opt-in only.
+            if (info[@"classicMode"] == nil) {
+                self.classicMode = NO;
+            }
         } else {
             self.isJITNeeded = YES;
             self.classicMode = YES;
             self.spoofSDKVersion = YES;
         }
+        if (LCModernizeInfoPlistForDuo(infoPlist)) {
+            [infoPlist writeBinToFile:[NSString stringWithFormat:@"%@/Info.plist", appPath] atomically:YES];
+        }
         info[@"LCPatchRevision"] = @(currentPatchRev);
         forceSign = true;
         
         [self save];
+    } else if (LCModernizeInfoPlistForDuo(infoPlist)) {
+        [infoPlist writeBinToFile:[NSString stringWithFormat:@"%@/Info.plist", appPath] atomically:YES];
+        forceSign = true;
     }
 
     if (!LCSharedUtils.certificatePassword || self.is32bit || self.dontSign) {
@@ -760,6 +776,8 @@
         if ((self.is32bit || sdkVersion) && sdkVersion < minSDK) {
             sdkVersion = minSDK;
         }
+        // Guest SDK flooring for Duo layouts is left to a real Xcode 27.x /
+        // iphoneos27.x build (see upstream #1695) rather than a hard clamp here.
         NSLog(@"[LC] sdkversion = %8x", sdkVersion);
         _info[@"spoofSDKVersion"] = [NSNumber numberWithUnsignedInt:sdkVersion];
     }

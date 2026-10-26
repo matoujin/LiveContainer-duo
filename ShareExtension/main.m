@@ -7,9 +7,28 @@
 #import "LCShareExtensionLauncher.h"
 #import "../LiveContainer/utils.h"
 #import "../LiveContainer/UIKitPrivate.h"
+#include <sys/sysctl.h>
+#include <stdlib.h>
 
 static Class LSApplicationWorkspaceClass;
 static Class _LSOpenConfigurationClass;
+
+static BOOL LCShareExtensionIsPhoneDuo(void) {
+    static dispatch_once_t onceToken;
+    static BOOL isDuo = NO;
+    dispatch_once(&onceToken, ^{
+        size_t size = 0;
+        sysctlbyname("hw.machine", NULL, &size, NULL, 0);
+        if (size > 0) {
+            char *buf = calloc(1, size);
+            if (buf && sysctlbyname("hw.machine", buf, &size, NULL, 0) == 0) {
+                isDuo = strcmp(buf, "iPhone19,4") == 0;
+            }
+            free(buf);
+        }
+    });
+    return isDuo;
+}
 
 @implementation LCShareExtensionLauncher
 
@@ -37,7 +56,9 @@ static Class _LSOpenConfigurationClass;
     __block BOOL success = NO;
     if(scheme) {
         NSNumber *classicMode = options[@"classicMode"];
-        if ([classicMode isKindOfClass:NSNumber.class] && classicMode.unsignedIntegerValue != 0) {
+        // iPhone Duo: never ActivateAsClassic — locks host into 375×667 half-screen.
+        if (!LCShareExtensionIsPhoneDuo() &&
+            [classicMode isKindOfClass:NSNumber.class] && classicMode.unsignedIntegerValue != 0) {
             _LSOpenConfiguration *classicConfig = [[_LSOpenConfigurationClass alloc] init];
             classicConfig.frontBoardOptions = @{
                 FBSOpenApplicationOptionKeyActivateAsClassic: classicMode

@@ -73,3 +73,9 @@ typedef NS_ENUM(NSInteger, GeneratedIconStyle){
 BOOL saveCGImage(CGImageRef image, NSURL *url);
 CGImageRef loadCGImageFromURL(NSURL *url);
 NSNumber *LCGetDefaultClassicMode(NSURL *appURL);
+
+/// Duo / iOS 27.1: strip legacy SplashBoard keys and inject modern UILaunchScreen.
+NSArray<NSString *> *LCLegacyLaunchInfoKeys(void);
+BOOL LCInfoPlistNeedsModernLaunchScreen(NSDictionary *infoPlist);
+BOOL LCModernizeInfoPlistForDuo(NSMutableDictionary *infoPlist);
+NSDictionary *LCModernizedInfoPlistSnapshot(NSDictionary *infoPlist);

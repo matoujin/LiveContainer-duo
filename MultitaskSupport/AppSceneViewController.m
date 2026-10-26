@@ -129,7 +129,10 @@
     void (^updateSceneSettings)(id) = ^void(UIMutableApplicationSceneSettings *settings) {
         settings.canShowAlerts = YES;
         settings.cornerRadiusConfiguration = [[PrivClass(BSCornerRadiusConfiguration) alloc] initWithTopLeft:self.view.layer.cornerRadius bottomLeft:self.view.layer.cornerRadius bottomRight:self.view.layer.cornerRadius topRight:self.view.layer.cornerRadius];
-        settings.displayConfiguration = UIScreen.mainScreen.displayConfiguration;
+        // Prefer the hosting window scene's screen so Fold↔Unfold on iPhone Duo
+        // updates displayConfiguration / safe areas instead of caching UIScreen.main.
+        UIScreen *sceneScreen = self.view.window.windowScene.screen ?: UIScreen.mainScreen;
+        settings.displayConfiguration = sceneScreen.displayConfiguration;
         settings.foreground = YES;
         //settings.interruptionPolicy = 2; // reconnect
         settings.level = 1;
@@ -138,7 +141,16 @@
         //settings.previewMaximumSize =
         //settings.deviceOrientationEventsEnabled = YES;
         if(!self.usesHostingControllerAPI) {
-            settings.safeAreaInsetsPortrait = self.view.safeAreaInsets;
+            // Include Duo vertical-bar safeAreaInsets (left/right) from the host view.
+            UIEdgeInsets insets = self.view.safeAreaInsets;
+            settings.safeAreaInsetsPortrait = insets;
+            if (@available(iOS 19.0, *)) {
+                if ([settings respondsToSelector:@selector(setSafeAreaEdgeInsets:)]) {
+                    settings.safeAreaEdgeInsets = insets;
+                } else {
+                    [settings setValue:[NSValue valueWithUIEdgeInsets:insets] forKey:@"safeAreaEdgeInsets"];
+                }
+            }
         }
     };
     void (^updateSceneClientSettings)(id) = ^void(UIMutableApplicationSceneClientSettings *clientSettings) {
@@ -274,6 +286,21 @@
         [self updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
             settings.deviceOrientation = UIDevice.currentDevice.orientation;
             settings.interfaceOrientation = self.view.window.windowScene.interfaceOrientation;
+            // Refresh display + safe areas on every layout pass so Duo Fold↔Unfold
+            // propagates coordinateSpace.bounds and UIVerticalBarEdge insets live.
+            UIScreen *sceneScreen = self.view.window.windowScene.screen ?: UIScreen.mainScreen;
+            settings.displayConfiguration = sceneScreen.displayConfiguration;
+            UIEdgeInsets hostInsets = self.view.safeAreaInsets;
+            if(!self.usesHostingControllerAPI) {
+                settings.safeAreaInsetsPortrait = hostInsets;
+                if (@available(iOS 19.0, *)) {
+                    if ([settings respondsToSelector:@selector(setSafeAreaEdgeInsets:)]) {
+                        settings.safeAreaEdgeInsets = hostInsets;
+                    } else {
+                        [settings setValue:[NSValue valueWithUIEdgeInsets:hostInsets] forKey:@"safeAreaEdgeInsets"];
+                    }
+                }
+            }
             CGRect frame = self.view.frame;
             if(!self.usesHostingControllerAPI) {
                 frame.size.width /= self.scaleRatio;
