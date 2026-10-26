@@ -71,6 +71,7 @@ jobs:
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
         run: |
+          set -o pipefail
           xcodebuild archive \
             -archivePath "$archive_path" \
             -scheme "$scheme" \
@@ -79,7 +80,13 @@ jobs:
             -arch arm64 \
             -configuration Release \
             IPHONEOS_DEPLOYMENT_TARGET=16.1 \
-            | xcpretty && exit ${PIPESTATUS[0]}
+            2>&1 | tee /tmp/xcodebuild.log | xcpretty
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo '==== xcodebuild errors ===='
+            grep -E 'error:|fatal error:|undefined' /tmp/xcodebuild.log | tail -80 || true
+          fi
+          exit $status
       - name: Tar Build Artifact
         run: tar -cvf "$archive_path.xcarchive.tar" "$archive_path.xcarchive"
       - name: Upload a Build Artifact

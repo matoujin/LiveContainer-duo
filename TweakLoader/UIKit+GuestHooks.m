@@ -66,24 +66,16 @@ static void LCInstallGeometrySyncIfNeeded(void) {
             addObserverForName:UIApplicationDidBecomeActiveNotification
                         object:nil
                          queue:NSOperationQueue.mainQueue
-                    usingBlock:^(__unused NSNotification *note) {
+                    usingBlock:^(__unused NSNotification * _Nonnull note) {
             LCSyncGuestWindowsToSceneBounds(LCForegroundWindowScene());
         }];
-        if (@available(iOS 13.0, *)) {
-            [[NSNotificationCenter defaultCenter]
-                addObserverForName:@"UIWindowSceneDidUpdateCoordinateSpaceNotification"
-                            object:nil
-                             queue:NSOperationQueue.mainQueue
-                        usingBlock:^(__unused NSNotification *note) {
-                LCSyncGuestWindowsToSceneBounds(LCForegroundWindowScene());
-            }];
-        }
-        // Also hook UIWindowSceneDelegate geometry callback via swizzle below when needed.
-        Class sceneClass = UIWindowScene.class;
-        SEL geomSel = @selector(_geometryDidUpdateWithTransitionContext:);
-        if (class_getInstanceMethod(sceneClass, geomSel)) {
-            // Best-effort: KVO on coordinateSpace is unavailable; use display-link poll fallback for legacy delegates.
-        }
+        [[NSNotificationCenter defaultCenter]
+            addObserverForName:@"UIWindowSceneDidUpdateCoordinateSpaceNotification"
+                        object:nil
+                         queue:NSOperationQueue.mainQueue
+                    usingBlock:^(__unused NSNotification * _Nonnull note) {
+            LCSyncGuestWindowsToSceneBounds(LCForegroundWindowScene());
+        }];
     });
 }
 
