@@ -71,26 +71,35 @@
       "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/venera.png",
       "tintColor": "#2D6CDF",
       "beta": true,
-      "version": "1.6.3",
-      "versionDate": "2026-10-26",
-      "versionDescription": "duo-latest：Venera Duo iPhone Duo / iOS 27.1 免签包。",
-      "downloadURL": "https://ghfast.top/https://github.com/matoujin/venera-duo/releases/download/duo-latest/venera_duo_1.6.3_ios27.1.ipa",
-      "size": 15597442,
+      "version": "1.6.3-duo2",
+      "versionDate": "2026-10-27",
+      "versionDescription": "1.6.3-duo2：宽屏/内页 NavigationRail 移至右侧（Duo）；封面页仍保留底部 Tab。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/venera-duo/releases/download/duo-latest/venera_duo_1.6.3-duo2_ios27.1.ipa",
+      "size": 15597671,
       "versions": [
         {
-          "version": "1.6.3",
+          "version": "1.6.3-duo2",
           "buildVersion": "163",
-          "date": "2026-10-26",
-          "localizedDescription": "duo-latest：Venera Duo iPhone Duo / iOS 27.1 免签包。",
-          "downloadURL": "https://ghfast.top/https://github.com/matoujin/venera-duo/releases/download/duo-latest/venera_duo_1.6.3_ios27.1.ipa",
-          "size": 15597442,
+          "date": "2026-10-27",
+          "localizedDescription": "1.6.3-duo2：宽屏/内页 NavigationRail 移至右侧（Duo）；封面页仍保留底部 Tab。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/venera-duo/releases/download/duo-latest/venera_duo_1.6.3-duo2_ios27.1.ipa",
+          "size": 15597671,
           "minOSVersion": "16.1",
-          "sha256": "b7bff87f663153581584df8793a170a85854743533fc5adddbba92259124d82f"
+          "sha256": "f2e9b51cefead0b1042522ba571daa103ecd09201c91038ea1dde0b00c8235b6"
         }
       ]
     }
   ],
   "news": [
+    {
+      "title": "Venera 1.6.3-duo2：右侧导航栏",
+      "identifier": "venera-1.6.3-duo2-2026-10-27",
+      "caption": "宽屏/内页 NavigationRail 移到右侧；封面页仍用底部 Tab。源已指向新 IPA。",
+      "date": "2026-10-27",
+      "tintColor": "#2D6CDF",
+      "url": "https://github.com/matoujin/venera-duo/releases/tag/duo-latest",
+      "notify": true
+    },
     {
       "title": "Duo 源上线：LiveContainer / Kazumi / Venera",
       "identifier": "duo-source-2026-10-26",
