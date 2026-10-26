@@ -38,6 +38,33 @@ This fork publishes Duo-optimized unsigned IPAs under the fixed prerelease tag `
 | LiveContainer + SideStore | https://github.com/matoujin/LiveContainer-duo/releases/download/duo-latest/LiveContainer+SideStore_duo_ios27.1.ipa |
 | LiveContainer only | https://github.com/matoujin/LiveContainer-duo/releases/download/duo-latest/LiveContainer_duo_ios27.1.ipa |
 
+#### SideStore / AltStore 源（推荐）
+
+在 SideStore（或 AltStore）里点「添加源 / Add Source」，把下面这串 URL **整段粘贴**进去即可一键看到 Duo 免签包：
+
+```text
+https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/apps.json
+```
+
+源里目前有：
+
+| App | 下载 |
+|:--|:--|
+| LiveContainer+SideStore | https://github.com/matoujin/LiveContainer-duo/releases/download/duo-latest/LiveContainer+SideStore_duo_ios27.1.ipa |
+| Kazumi Duo | https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2_ios27.1.ipa |
+| Venera Duo | https://github.com/matoujin/venera-duo/releases/download/duo-latest/venera_duo_1.6.3_ios27.1.ipa |
+
+说明：面向 iPhone Duo / iOS 27.1 / LiveContainer；**不会**收录 venera-duo Release 里误挂的旧 LiveContainer，也不会收录 Kazumi canary 重复包。
+
+刷新源（`duo-latest` 换包后）：
+
+```bash
+uv run scripts/update_sidestore_source.py
+# 看一眼 sidestore/apps.json 里的 version / size / downloadURL，再 commit + push 到 main
+```
+
+手动改也可以：拆 IPA 读 `Info.plist` 的 `CFBundleShortVersionString` / `CFBundleIdentifier` / `CFBundleVersion`，对照 Release 资源体积填进 `sidestore/apps.json`（步骤写在脚本文件头注释里）。
+
 ### Standalone 
 <table>
 <tr>

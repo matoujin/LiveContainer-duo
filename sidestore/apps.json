@@ -1,0 +1,104 @@
+{
+  "name": "matoujin Duo (iPhone Duo / iOS 27.1)",
+  "identifier": "com.matoujin.duo.source",
+  "sourceURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/apps.json",
+  "website": "https://github.com/matoujin/LiveContainer-duo",
+  "subtitle": "iPhone Duo 适配免签包（LiveContainer / Kazumi / Venera）",
+  "description": "磊 金（matoujin）维护的 SideStore / AltStore 源。收录面向 iPhone Duo / iOS 27.1、LiveContainer 场景的 duo-latest 免签 IPA。不含 venera-duo 里误挂的旧 LiveContainer，也不含 Kazumi canary 重复包。",
+  "tintColor": "#0784FC",
+  "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
+  "apps": [
+    {
+      "name": "LiveContainer+SideStore",
+      "bundleIdentifier": "com.kdt.livecontainer",
+      "developerName": "磊 金 (matoujin) / LiveContainer Team",
+      "subtitle": "iPhone Duo 适配的 LiveContainer+SideStore 合并包",
+      "localizedDescription": "面向 iPhone Duo / iOS 27.1 的 LiveContainer + 内置 SideStore 免签合并包（duo-latest）。用于在 LiveContainer 场景下运行/管理其他应用。\n\n构建：Xcode 27.1 / iphoneos27.1，MinimumOSVersion 16.1。",
+      "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
+      "tintColor": "#0784FC",
+      "beta": true,
+      "version": "3.8.12-duo4",
+      "versionDate": "2026-10-26",
+      "versionDescription": "duo-latest：LiveContainer+SideStore iPhone Duo / iOS 27.1 免签包。",
+      "downloadURL": "https://github.com/matoujin/LiveContainer-duo/releases/download/duo-latest/LiveContainer+SideStore_duo_ios27.1.ipa",
+      "size": 24115066,
+      "versions": [
+        {
+          "version": "3.8.12-duo4",
+          "buildVersion": "3.8.12.20261026b",
+          "date": "2026-10-26",
+          "localizedDescription": "duo-latest：LiveContainer+SideStore iPhone Duo / iOS 27.1 免签包。",
+          "downloadURL": "https://github.com/matoujin/LiveContainer-duo/releases/download/duo-latest/LiveContainer+SideStore_duo_ios27.1.ipa",
+          "size": 24115066,
+          "minOSVersion": "16.1",
+          "sha256": "c9865250daa938421a442f2d033d8257c311f98aa74a6685468dbeedcaf8c8f1"
+        }
+      ]
+    },
+    {
+      "name": "Kazumi Duo",
+      "bundleIdentifier": "com.example.kazumi.duo",
+      "developerName": "磊 金 (matoujin) / Kazumi",
+      "subtitle": "iPhone Duo 适配的 Kazumi 免签包",
+      "localizedDescription": "面向 iPhone Duo / iOS 27.1、适合在 LiveContainer 中安装的 Kazumi Duo 免签 IPA（duo-latest）。\n\n基于自定义规则的番剧采集应用。不含 canary 重复包。",
+      "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/kazumi.png",
+      "tintColor": "#E85D4C",
+      "beta": true,
+      "version": "2.4.2",
+      "versionDate": "2026-10-26",
+      "versionDescription": "duo-latest：Kazumi Duo iPhone Duo / iOS 27.1 免签包。",
+      "downloadURL": "https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2_ios27.1.ipa",
+      "size": 29501333,
+      "versions": [
+        {
+          "version": "2.4.2",
+          "buildVersion": "20402",
+          "date": "2026-10-26",
+          "localizedDescription": "duo-latest：Kazumi Duo iPhone Duo / iOS 27.1 免签包。",
+          "downloadURL": "https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2_ios27.1.ipa",
+          "size": 29501333,
+          "minOSVersion": "16.1",
+          "sha256": "35ba13bc864bd4708b3999340bc385a3bf97eb3ad9dd66ace300ea96dab514e8"
+        }
+      ]
+    },
+    {
+      "name": "Venera Duo",
+      "bundleIdentifier": "com.github.wgh136.venera.duo",
+      "developerName": "磊 金 (matoujin) / wgh136",
+      "subtitle": "iPhone Duo 适配的 Venera 免签包",
+      "localizedDescription": "面向 iPhone Duo / iOS 27.1、适合在 LiveContainer 中安装的 Venera Duo 免签 IPA（duo-latest）。\n\n漫画阅读应用。不含 venera-duo Release 里误挂的旧 LiveContainer 包。",
+      "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/venera.png",
+      "tintColor": "#2D6CDF",
+      "beta": true,
+      "version": "1.6.3",
+      "versionDate": "2026-10-26",
+      "versionDescription": "duo-latest：Venera Duo iPhone Duo / iOS 27.1 免签包。",
+      "downloadURL": "https://github.com/matoujin/venera-duo/releases/download/duo-latest/venera_duo_1.6.3_ios27.1.ipa",
+      "size": 15597442,
+      "versions": [
+        {
+          "version": "1.6.3",
+          "buildVersion": "163",
+          "date": "2026-10-26",
+          "localizedDescription": "duo-latest：Venera Duo iPhone Duo / iOS 27.1 免签包。",
+          "downloadURL": "https://github.com/matoujin/venera-duo/releases/download/duo-latest/venera_duo_1.6.3_ios27.1.ipa",
+          "size": 15597442,
+          "minOSVersion": "16.1",
+          "sha256": "b7bff87f663153581584df8793a170a85854743533fc5adddbba92259124d82f"
+        }
+      ]
+    }
+  ],
+  "news": [
+    {
+      "title": "Duo 源上线：LiveContainer / Kazumi / Venera",
+      "identifier": "duo-source-2026-10-26",
+      "caption": "在 SideStore 添加本源后，可一键看到并安装 iPhone Duo / iOS 27.1 免签包。",
+      "date": "2026-10-26",
+      "tintColor": "#0784FC",
+      "url": "https://github.com/matoujin/LiveContainer-duo",
+      "notify": false
+    }
+  ]
+}
