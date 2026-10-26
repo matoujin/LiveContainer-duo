@@ -717,16 +717,19 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
         dispatch_once(&onceToken, ^{
             // Poll scene bounds while active — coordinateSpace changes on Fold↔Unfold
             // without a reliable public notification on all iOS 27 builds.
-            [NSTimer scheduledTimerWithTimeInterval:0.25 repeats:YES block:^(__unused NSTimer *timer) {
+            [NSTimer scheduledTimerWithTimeInterval:0.25
+                                            repeats:YES
+                                              block:^(NSTimer *timer) {
+                (void)timer;
                 if (!LCGuestUsesLegacyAppDelegate) {
                     return;
                 }
                 UIWindowScene *scene = LCForegroundWindowScene();
-                if (scene.activationState == UISceneActivationStateForegroundActive) {
+                if (scene && scene.activationState == UISceneActivationStateForegroundActive) {
                     LCSyncGuestWindowsToSceneBounds(scene);
                 }
             }];
-        }];
+        });
     }
     [self hook_setDelegate:delegate];
 }

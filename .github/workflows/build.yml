@@ -87,9 +87,12 @@ jobs:
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             echo '==== xcodebuild errors ===='
-            grep -E 'error:|fatal error:|undefined' /tmp/xcodebuild.log | tail -80 || true
-            echo '==== last 40 log lines ===='
-            tail -40 /tmp/xcodebuild.log || true
+            # Match clang diagnostics only (avoid ObjC selectors named error:)
+            grep -E '/[^:]+\.(m|mm|swift|h):[0-9]+:[0-9]+: (error|fatal error):|undefined symbol' /tmp/xcodebuild.log | tail -80 || true
+            echo '==== GuestHooks / AppScene context ===='
+            grep -n -A3 -B3 'GuestHooks\|AppSceneViewController\|OfflineClassic\|error: expected\|error: ' /tmp/xcodebuild.log | tail -120 || true
+            echo '==== last 60 log lines ===='
+            tail -60 /tmp/xcodebuild.log || true
           fi
           exit $status
       - name: Tar Build Artifact
