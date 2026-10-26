@@ -18,7 +18,7 @@ Manual fallback (no script):
   3. Edit sidestore/apps.json:
        - versions[0].version          = CFBundleShortVersionString
        - versions[0].buildVersion     = CFBundleVersion
-       - versions[0].downloadURL      = release asset URL
+       - versions[0].downloadURL      = ghfast.top-mirrored release asset URL
        - versions[0].size             = asset size (bytes)
        - versions[0].date             = release/asset date (YYYY-MM-DD)
        - versions[0].sha256           = release asset digest (optional but recommended)
@@ -43,6 +43,21 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 APPS_JSON = ROOT / "sidestore" / "apps.json"
+
+# China-friendly GitHub release mirror for SideStore downloadURL fields.
+# Users in mainland China often time out on github.com/.../releases/download/...
+GHFAST_PREFIX = "https://ghfast.top/"
+
+
+def mirror_download_url(url: str) -> str:
+    """Prefix GitHub release download URLs with ghfast.top; leave others unchanged."""
+    if not url:
+        return url
+    if url.startswith(GHFAST_PREFIX):
+        return url
+    if "github.com/" in url and "/releases/download/" in url:
+        return f"{GHFAST_PREFIX}{url}"
+    return url
 
 # Only these assets are allowed into the SideStore source.
 APPS = [
@@ -162,7 +177,9 @@ def update_app_entry(app: dict, *, plist: dict, asset: dict, release: dict) -> N
             f"source={app['bundleIdentifier']} ipa={bundle_id}"
         )
 
-    download_url = asset["browser_download_url"]
+    # Emit mirrored IPA links by default so SideStore clients in CN can download.
+    # IPA metadata fetch still uses the direct GitHub asset URL above.
+    download_url = mirror_download_url(asset["browser_download_url"])
     size = int(asset["size"])
     date = iso_date(asset.get("updated_at") or release.get("published_at"))
     sha = digest_sha256(asset)
