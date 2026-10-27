@@ -44,12 +44,22 @@
       "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/kazumi.png",
       "tintColor": "#E85D4C",
       "beta": true,
-      "version": "2.4.2-duo3",
+      "version": "2.4.2-duo4",
       "versionDate": "2026-10-27",
-      "versionDescription": "iPhone Duo (iOS 27.1) 全屏适配：无论外屏窄屏还是内屏展开，导航栏统一固定在右侧边栏，方便右手单手切换。",
-      "downloadURL": "https://ghfast.top/https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2-duo3_ios27.1.ipa",
-      "size": 29625939,
+      "versionDescription": "右侧栏搜索按钮移至底部并保留左侧顶栏搜索图标，避开 iPhone Duo 右上角系统状态栏药丸。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2-duo4_ios27.1.ipa",
+      "size": 29624034,
       "versions": [
+        {
+          "version": "2.4.2-duo4",
+          "buildVersion": "20406",
+          "date": "2026-10-27",
+          "localizedDescription": "右侧栏搜索按钮移至底部并保留左侧顶栏搜索图标，避开 iPhone Duo 右上角系统状态栏药丸。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/Kazumi-duo/releases/download/duo-latest/Kazumi_duo_2.4.2-duo4_ios27.1.ipa",
+          "size": 29624034,
+          "minOSVersion": "16.1",
+          "sha256": "172fbb4e6757d399fa125df390850419e2e02e75e88dca45537094ca309595ea"
+        },
         {
           "version": "2.4.2-duo3",
           "buildVersion": "20405",
