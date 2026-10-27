@@ -3,8 +3,8 @@
   "identifier": "com.matoujin.duo.source",
   "sourceURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/apps.json",
   "website": "https://github.com/matoujin/LiveContainer-duo",
-  "subtitle": "iPhone Duo 适配免签包（LiveContainer / Kazumi / Venera）",
-  "description": "磊 金（matoujin）维护的 SideStore / AltStore 源。收录面向 iPhone Duo / iOS 27.1、LiveContainer 场景的 duo-latest 免签 IPA。不含 venera-duo 里误挂的旧 LiveContainer，也不含 Kazumi canary 重复包。",
+  "subtitle": "iPhone Duo 适配免签包（LiveContainer / Kazumi / Venera / 立绘屏保）",
+  "description": "磊 金（matoujin）维护的 SideStore / AltStore 源。收录面向 iPhone Duo / iOS 27.1、LiveContainer 场景的 duo-latest 免签 IPA。不含 venera-duo 里误挂的旧 LiveContainer，也不含 Kazumi canary 重复包。 另收录立绘屏保。",
   "tintColor": "#0784FC",
   "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
   "apps": [
@@ -106,6 +106,33 @@
           "size": 15597671,
           "minOSVersion": "16.1",
           "sha256": "f2e9b51cefead0b1042522ba571daa103ecd09201c91038ea1dde0b00c8235b6"
+        }
+      ]
+    },
+    {
+      "name": "立绘屏保",
+      "bundleIdentifier": "app.rigscreen.player",
+      "developerName": "磊 金 (matoujin)",
+      "subtitle": "iPhone Duo 适配的立绘屏保免签包",
+      "localizedDescription": "面向 iPhone Duo / iOS 27.1、适合在 LiveContainer 中安装的立绘屏保（duo-latest）。\n\n手机打开摄像头并绘制 Mac 上准备好的立绘。合盖是整面立绘；横着打开时脸在铰链下面。不显示相机小窗。",
+      "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
+      "tintColor": "#C42C50",
+      "beta": true,
+      "version": "1.0-duo1",
+      "versionDate": "2026-10-27",
+      "versionDescription": "收回过大的摇头幅度。横屏不再把上半屏空出来放按钮，脸留在铰链下方。去掉相机小窗。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo1_ios27.1.ipa",
+      "size": 8868389,
+      "versions": [
+        {
+          "version": "1.0-duo1",
+          "buildVersion": "2",
+          "date": "2026-10-27",
+          "localizedDescription": "收回过大的摇头幅度。横屏不再把上半屏空出来放按钮，脸留在铰链下方。去掉相机小窗。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo1_ios27.1.ipa",
+          "size": 8868389,
+          "minOSVersion": "15.0",
+          "sha256": "63a2c0822c8a93229de398aa507d56fcee3155563c88dce8b75cfa32ee19fe36"
         }
       ]
     }
