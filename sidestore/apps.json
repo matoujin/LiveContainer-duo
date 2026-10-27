@@ -118,12 +118,22 @@
       "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
       "tintColor": "#C42C50",
       "beta": true,
-      "version": "1.0-duo1",
-      "versionDate": "2026-10-27",
-      "versionDescription": "收回过大的摇头幅度。横屏不再把上半屏空出来放按钮，脸留在铰链下方。去掉相机小窗。",
-      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo1_ios27.1.ipa",
-      "size": 8868389,
+      "version": "1.0-duo2",
+      "versionDate": "2026-10-28",
+      "versionDescription": "折叠和展开时立绘会滑到新高度，不再突然跳高或跳低。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo2_ios27.1.ipa",
+      "size": 8868844,
       "versions": [
+        {
+          "version": "1.0-duo2",
+          "buildVersion": "3",
+          "date": "2026-10-28",
+          "localizedDescription": "折叠和展开时立绘会滑到新高度，不再突然跳高或跳低。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo2_ios27.1.ipa",
+          "size": 8868844,
+          "minOSVersion": "15.0",
+          "sha256": "f86c83a98f03433f15fbc4540b586ebbe1c2379eb36a63bb59c1926e97dd0b5b"
+        },
         {
           "version": "1.0-duo1",
           "buildVersion": "2",
