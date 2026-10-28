@@ -114,16 +114,26 @@
       "bundleIdentifier": "app.rigscreen.player",
       "developerName": "磊 金 (matoujin)",
       "subtitle": "iPhone Duo 适配的立绘屏保免签包",
-      "localizedDescription": "面向 iPhone Duo / iOS 27.1、适合在 LiveContainer 中安装的立绘屏保（duo-latest）。\n\n现在的立绘是正面的间桐樱。脸和刘海是整片，头发跟着头动，衣服跟着身体。打开相机后，虚化的画面作为背景，人被盖住。",
+      "localizedDescription": "面向 iPhone Duo / iOS 27.1、适合在 LiveContainer 中安装的立绘屏保（duo-latest）。\n\n现在的立绘是 see-through 拆开的正面间桐樱。头发、脸、眼睛、嘴和衣服分开跟着动。打开相机后，虚化的画面作为背景，人被盖住。",
       "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
       "tintColor": "#C42C50",
       "beta": true,
-      "version": "1.0-duo5",
+      "version": "1.0-duo6",
       "versionDate": "2026-10-28",
-      "versionDescription": "脸和刘海改回整片，不再被切成错位的块。头发跟着头一起动，衣服跟着身体。打开相机后背景仍是虚化画面。",
-      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo5_ios27.1.ipa",
-      "size": 6459191,
+      "versionDescription": "间桐樱改由 see-through 拆层。头发、脸、眼睛、嘴和衣服分开动。打开相机后背景仍是虚化画面。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo6_ios27.1.ipa",
+      "size": 7382035,
       "versions": [
+        {
+          "version": "1.0-duo6",
+          "buildVersion": "7",
+          "date": "2026-10-28",
+          "localizedDescription": "间桐樱改由 see-through 拆层。头发、脸、眼睛、嘴和衣服分开动。打开相机后背景仍是虚化画面。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo6_ios27.1.ipa",
+          "size": 7382035,
+          "minOSVersion": "15.0",
+          "sha256": "4b36f83734a7ed32e713e2614410bb2d0c0f9a78bbe4ff46222ecb0af6a7c578"
+        },
         {
           "version": "1.0-duo5",
           "buildVersion": "6",
@@ -178,6 +188,16 @@
     }
   ],
   "news": [
+    {
+      "title": "立绘屏保 1.0-duo6：see-through 拆层",
+      "identifier": "rigscreen-1.0-duo6-2026-10-28",
+      "caption": "这版是 see-through 拆的间桐樱，不是之前那版手切。刷新这个源就能更新。",
+      "date": "2026-10-28",
+      "tintColor": "#C42C50",
+      "url": "https://github.com/matoujin/RigScreen-duo/releases/tag/duo-latest",
+      "appID": "app.rigscreen.player",
+      "notify": true
+    },
     {
       "title": "立绘屏保 1.0-duo5：脸不再被切碎",
       "identifier": "rigscreen-1.0-duo5-2026-10-28",
