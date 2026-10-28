@@ -114,16 +114,26 @@
       "bundleIdentifier": "app.rigscreen.player",
       "developerName": "磊 金 (matoujin)",
       "subtitle": "iPhone Duo 适配的立绘屏保免签包",
-      "localizedDescription": "面向 iPhone Duo / iOS 27.1、适合在 LiveContainer 中安装的立绘屏保（duo-latest）。\n\n现在的立绘是正面的间桐樱。头发、脸、眼睛、嘴和衣服分开跟着动。打开相机后，虚化的画面作为背景，人被盖住。",
+      "localizedDescription": "面向 iPhone Duo / iOS 27.1、适合在 LiveContainer 中安装的立绘屏保（duo-latest）。\n\n现在的立绘是正面的间桐樱。脸和刘海是整片，头发跟着头动，衣服跟着身体。打开相机后，虚化的画面作为背景，人被盖住。",
       "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
       "tintColor": "#C42C50",
       "beta": true,
-      "version": "1.0-duo4",
+      "version": "1.0-duo5",
       "versionDate": "2026-10-28",
-      "versionDescription": "换成正面的间桐樱。头发、脸、眼睛、嘴和衣服分开绑，会眨眼、张嘴、晃头发。打开相机后背景仍是虚化画面。",
-      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo4_ios27.1.ipa",
-      "size": 6669264,
+      "versionDescription": "脸和刘海改回整片，不再被切成错位的块。头发跟着头一起动，衣服跟着身体。打开相机后背景仍是虚化画面。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo5_ios27.1.ipa",
+      "size": 6459191,
       "versions": [
+        {
+          "version": "1.0-duo5",
+          "buildVersion": "6",
+          "date": "2026-10-28",
+          "localizedDescription": "脸和刘海改回整片，不再被切成错位的块。头发跟着头一起动，衣服跟着身体。打开相机后背景仍是虚化画面。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo5_ios27.1.ipa",
+          "size": 6459191,
+          "minOSVersion": "15.0",
+          "sha256": "050c009195732cb970df23595d1fdabd05273924c7df70636914db4f39e457d9"
+        },
         {
           "version": "1.0-duo4",
           "buildVersion": "5",
@@ -168,6 +178,16 @@
     }
   ],
   "news": [
+    {
+      "title": "立绘屏保 1.0-duo5：脸不再被切碎",
+      "identifier": "rigscreen-1.0-duo5-2026-10-28",
+      "caption": "上一版把刘海和眼睛切坏了。这一版脸和刘海是整片。刷新这个源就能更新。",
+      "date": "2026-10-28",
+      "tintColor": "#C42C50",
+      "url": "https://github.com/matoujin/RigScreen-duo/releases/tag/duo-latest",
+      "appID": "app.rigscreen.player",
+      "notify": true
+    },
     {
       "title": "立绘屏保 1.0-duo4：间桐樱",
       "identifier": "rigscreen-1.0-duo4-2026-10-28",
