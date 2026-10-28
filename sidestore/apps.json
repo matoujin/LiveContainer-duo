@@ -169,6 +169,16 @@
   ],
   "news": [
     {
+      "title": "立绘屏保 1.0-duo4：间桐樱",
+      "identifier": "rigscreen-1.0-duo4-2026-10-28",
+      "caption": "换成正面的间桐樱。头发、脸、眼睛、嘴和衣服分开动。刷新这个源就能更新。",
+      "date": "2026-10-28",
+      "tintColor": "#C42C50",
+      "url": "https://github.com/matoujin/RigScreen-duo/releases/tag/duo-latest",
+      "appID": "app.rigscreen.player",
+      "notify": true
+    },
+    {
       "title": "Kazumi 2.4.2-duo2：右侧导航栏",
       "identifier": "kazumi-2.4.2-duo2-2026-10-27",
       "caption": "宽屏/内页 NavigationRail 移到右侧；窄窗仍用底部 Tab。源已指向新 IPA。",
