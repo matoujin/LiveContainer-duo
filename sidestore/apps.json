@@ -119,7 +119,7 @@
       "tintColor": "#C42C50",
       "beta": true,
       "version": "1.0-duo6",
-      "versionDate": "2026-10-28",
+      "versionDate": "2026-10-29",
       "versionDescription": "间桐樱改由 see-through 拆层。头发、脸、眼睛、嘴和衣服分开动。打开相机后背景仍是虚化画面。",
       "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo6_ios27.1.ipa",
       "size": 7382035,
@@ -127,7 +127,7 @@
         {
           "version": "1.0-duo6",
           "buildVersion": "7",
-          "date": "2026-10-28",
+          "date": "2026-10-29",
           "localizedDescription": "间桐樱改由 see-through 拆层。头发、脸、眼睛、嘴和衣服分开动。打开相机后背景仍是虚化画面。",
           "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo6_ios27.1.ipa",
           "size": 7382035,
@@ -188,6 +188,16 @@
     }
   ],
   "news": [
+    {
+      "title": "立绘屏保 1.0-duo6：see-through 拆层",
+      "identifier": "rigscreen-1.0-duo6-2026-10-29",
+      "caption": "see-through 拆好的间桐樱。在 SideStore 里下拉刷新这个源就能更新。",
+      "date": "2026-10-29",
+      "tintColor": "#C42C50",
+      "url": "https://github.com/matoujin/RigScreen-duo/releases/tag/duo-latest",
+      "appID": "app.rigscreen.player",
+      "notify": true
+    },
     {
       "title": "立绘屏保 1.0-duo6：see-through 拆层",
       "identifier": "rigscreen-1.0-duo6-2026-10-28",
