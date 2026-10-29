@@ -118,12 +118,22 @@
       "iconURL": "https://raw.githubusercontent.com/matoujin/LiveContainer-duo/main/sidestore/icons/livecontainer.png",
       "tintColor": "#C42C50",
       "beta": true,
-      "version": "1.0-duo6",
+      "version": "1.0-duo7",
       "versionDate": "2026-10-29",
-      "versionDescription": "间桐樱改由 see-through 拆层。头发、脸、眼睛、嘴和衣服分开动。打开相机后背景仍是虚化画面。",
-      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo6_ios27.1.ipa",
-      "size": 7382035,
+      "versionDescription": "去掉整块背景色。折叠和展开时会重新打开当前这一面的摄像头。脖子的颜色改成和脸一致，转头时不再错开。",
+      "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo7_ios27.1.ipa",
+      "size": 7377960,
       "versions": [
+        {
+          "version": "1.0-duo7",
+          "buildVersion": "8",
+          "date": "2026-10-29",
+          "localizedDescription": "去掉整块背景色。折叠和展开时会重新打开当前这一面的摄像头。脖子的颜色改成和脸一致，转头时不再错开。",
+          "downloadURL": "https://ghfast.top/https://github.com/matoujin/RigScreen-duo/releases/download/duo-latest/RigScreen_duo_1.0-duo7_ios27.1.ipa",
+          "size": 7377960,
+          "minOSVersion": "15.0",
+          "sha256": "2da902dafc2eb25c6fef92d447d829f06dd9af80dbe04f47aea4da742dbd84ee"
+        },
         {
           "version": "1.0-duo6",
           "buildVersion": "7",
@@ -188,6 +198,16 @@
     }
   ],
   "news": [
+    {
+      "title": "立绘屏保 1.0-duo7：背景、摄像头、脖子",
+      "identifier": "rigscreen-1.0-duo7-2026-10-29",
+      "caption": "去掉那层背景色。折叠时会切换摄像头。脖子颜色和脸对齐。下拉刷新这个源就能更新。",
+      "date": "2026-10-29",
+      "tintColor": "#C42C50",
+      "url": "https://github.com/matoujin/RigScreen-duo/releases/tag/duo-latest",
+      "appID": "app.rigscreen.player",
+      "notify": true
+    },
     {
       "title": "立绘屏保 1.0-duo6：see-through 拆层",
       "identifier": "rigscreen-1.0-duo6-2026-10-29",
